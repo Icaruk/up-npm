@@ -1,6 +1,5 @@
 {
 	"name": "up-npm",
-	"private": true,
 	"version": "0.0.1",
 	"author": "Icaruk",
 	"scripts": {
