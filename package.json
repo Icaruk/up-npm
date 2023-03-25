@@ -27,7 +27,8 @@
 		"package"
 	],
 	"files": [
-		"dist"
+		"dist",
+		"scripts"
 	],
 	"bin": {
 		"up-npm": "./dist/up-npm"
