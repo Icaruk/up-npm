@@ -1,0 +1,45 @@
+{
+	"name": "up-npm",
+	"private": true,
+	"version": "0.0.1",
+	"author": "Icaruk",
+	"scripts": {
+		"postinstall": "go-npm install",
+		"preuninstall": "go-npm uninstall"
+	},
+	"homepage": "https://github.com/Icaruk/up-npm",
+	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/Icaruk/up-npm.git"
+	},
+	"bugs": {
+		"url": "https://github.com/Icaruk/up-npm/issues"
+	},
+	"keywords": [
+		"npm",
+		"update",
+		"updater",
+		"upgrade",
+		"outdated",
+		"dependencies",
+		"cli",
+		"interactive",
+		"package"
+	],
+	"dependencies": {
+		"go-npm": "^0.1.9"
+	},
+	"files": [
+		"dist"
+	],
+	"goBinary": {
+		"name": "up-npm",
+		"path": "./bin",
+		"url": "https://github.com/Icaruk/up-npm/releases/download/v0.0.1/up-npm-0.0.1-windows-amd64.exe",
+		"url2": "https://github.com/icaruk/up-npm/releases/download/v{{version}}/up-npm-{{version}}-{{platform}}-{{arch}}"
+	},
+	"custom": {
+		"yes": true
+	}
+}
