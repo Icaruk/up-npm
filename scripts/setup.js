@@ -6,7 +6,7 @@ const platform = os.platform();
 
 const distPath = path.join(__dirname, "../dist");
 const scriptsPath = path.join(__dirname, "../scripts");
-const binPath = path.join(__dirname);
+const binPath = path.join(__dirname, "..");
 
 const appName = "up-npm";
 const version = "0.0.1";
@@ -42,10 +42,11 @@ if (!fs.existsSync(source)) {
 };
 
 
-if (fs.existsSync(destination)) fs.rmSync(destination)
+const emptyBinPath = path.join(binPath, appName);
+if (fs.existsSync(emptyBinPath)) fs.rmSync(emptyBinPath)
 fs.copyFileSync(source, destination);
 
 
 // Cleanup
-// fs.rmdirSync(distPath, { recursive: true });
-// fs.rmdirSync(scriptsPath, { recursive: true });
+fs.rmdirSync(distPath, { recursive: true });
+fs.rmdirSync(scriptsPath, { recursive: true });

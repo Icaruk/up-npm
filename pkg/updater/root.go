@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/AlecAivazis/survey/v2"
+	"github.com/AlecAivazis/survey/v2/terminal"
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/logrusorgru/aurora/v4"
 	"github.com/schollz/progressbar/v3"
@@ -181,7 +182,7 @@ type writeJsonOptions struct {
 	no         string
 }
 
-func promptUpdateDependency(options updatePackageOptions, dependency, currentVersion, latestVersion, versionType string) string {
+func promptUpdateDependency(options updatePackageOptions, dependency, currentVersion, latestVersion, versionType string) (string, error) {
 	response := ""
 	prompt := &survey.Select{
 		Message: fmt.Sprintf(
@@ -190,6 +191,7 @@ func promptUpdateDependency(options updatePackageOptions, dependency, currentVer
 			currentVersion,
 			colorizeVersion(latestVersion, versionType),
 		),
+		Help: "Use arrow keys to navigate",
 		Options: []string{
 			options.update,
 			options.skip,
@@ -197,9 +199,9 @@ func promptUpdateDependency(options updatePackageOptions, dependency, currentVer
 			options.finish,
 		},
 	}
-	survey.AskOne(prompt, &response)
+	err := survey.AskOne(prompt, &response)
 
-	return response
+	return response, err
 }
 
 func promptWriteJson(options writeJsonOptions) string {
@@ -405,10 +407,10 @@ func Init(updateDev bool) {
 	}
 
 	// Table
-	fmt.Println()
-	fmt.Println()
+	fmt.Println("")
+	fmt.Println("")
 	printUpdatablePackagesTable(versionComparison)
-	fmt.Println()
+	fmt.Println("")
 
 	// Count version types
 	totalCount, majorCount, minorCount, patchCount := countVersionTypes(versionComparison)
@@ -429,9 +431,13 @@ func Init(updateDev bool) {
 
 		for {
 
-			response := promptUpdateDependency(updatePackageOptions, key, value.current, value.latest, value.versionType)
+			response, err := promptUpdateDependency(updatePackageOptions, key, value.current, value.latest, value.versionType)
 
-			fmt.Println("response", response)
+			if err != nil {
+				if err == terminal.InterruptErr {
+					log.Fatal("interrupted")
+				}
+			}
 
 			if response == updatePackageOptions.skip {
 				fmt.Println("Skipping update for \"", key, "\"")
