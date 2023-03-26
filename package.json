@@ -1,0 +1,36 @@
+{
+	"name": "up-npm",
+	"version": "2.0.0",
+	"author": "Icaruk",
+	"scripts": {
+		"postinstall": "node ./scripts/setup.js"
+	},
+	"homepage": "https://github.com/Icaruk/up-npm",
+	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/Icaruk/up-npm.git"
+	},
+	"bugs": {
+		"url": "https://github.com/Icaruk/up-npm/issues"
+	},
+	"keywords": [
+		"npm",
+		"update",
+		"updater",
+		"upgrade",
+		"outdated",
+		"dependencies",
+		"cli",
+		"interactive",
+		"package"
+	],
+	"files": [
+		"dist",
+		"scripts",
+		"up-npm"
+	],
+	"bin": {
+		"up-npm": "up-npm"
+	}
+}

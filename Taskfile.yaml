@@ -1,0 +1,17 @@
+# https://taskfile.dev
+
+version: '3'
+
+vars:
+  DIST_FOLDER: dist
+  APPNAME: up-npm
+  VERSION: 0.0.1
+
+tasks:
+  build:
+    cmds:
+      - GOOS=windows GOARCH=amd64 go build -o {{.DIST_FOLDER}}/{{.APPNAME}}-{{.VERSION}}-windows-amd64.exe
+      - GOOS=darwin GOARCH=amd64 go build -o {{.DIST_FOLDER}}/{{.APPNAME}}-{{.VERSION}}-darwin-amd64
+      - GOOS=linux GOARCH=amd64 go build -o {{.DIST_FOLDER}}/{{.APPNAME}}-{{.VERSION}}-linux-amd64
+      - echo "Build complete"
+    silent: true
