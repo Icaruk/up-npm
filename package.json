@@ -1,6 +1,6 @@
 {
 	"name": "up-npm",
-	"version": "0.1.3",
+	"version": "0.1.9",
 	"author": "Icaruk",
 	"scripts": {
 		"postinstall": "node ./scripts/setup.js"
@@ -28,9 +28,9 @@
 	"files": [
 		"dist",
 		"scripts",
-		"bin"
+		"up-npm"
 	],
 	"bin": {
-		"up-npm": "bin/up-npm"
+		"up-npm": "up-npm"
 	}
 }
