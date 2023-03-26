@@ -9,7 +9,7 @@ const scriptsPath = path.join(__dirname, "../scripts");
 const binPath = path.join(__dirname, "..");
 
 const appName = "up-npm";
-const version = "0.0.1";
+const version = "0.0.2";
 
 let distFilename = "";
 let suffix = "";

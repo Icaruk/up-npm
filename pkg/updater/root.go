@@ -295,7 +295,7 @@ func Openbrowser(url string) {
 }
 
 func getCleanVersion(version string) (string, string) {
-	re := regexp.MustCompile(`(.*)(\d+\.\d+\.\d+)(.*)`)
+	re := regexp.MustCompile(`([^0-9]*)(\d+\.\d+\.\d+)(.*)`)
 	reSubmatch := re.FindStringSubmatch(version)
 
 	prefix := reSubmatch[1]
