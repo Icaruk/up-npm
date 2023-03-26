@@ -45,5 +45,5 @@ fs.copyFileSync(
 );
 
 // Cleanup
-fs.rmdirSync(distPath, { recursive: true });
-fs.rmdirSync(scriptsPath, { recursive: true });
+// fs.rmdirSync(distPath, { recursive: true });
+// fs.rmdirSync(scriptsPath, { recursive: true });
