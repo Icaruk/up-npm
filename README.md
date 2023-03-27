@@ -9,7 +9,7 @@ CLI tool written in Go to review and update your NPM dependencies, easy and fast
 Go where your `package.json` is located and run:
 
 ```bash
-updatenpm [flags]
+up-npm [flags]
 ```
 
 Flags:
