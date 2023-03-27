@@ -26,5 +26,5 @@ require (
 	github.com/tidwall/pretty v1.2.1 // indirect
 	golang.org/x/sys v0.6.0 // indirect
 	golang.org/x/term v0.6.0 // indirect
-	golang.org/x/text v0.3.3 // indirect
+	golang.org/x/text v0.3.8 // indirect
 )
