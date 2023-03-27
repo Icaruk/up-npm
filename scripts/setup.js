@@ -12,13 +12,13 @@ const appName = "up-npm";
 const version = "0.0.2";
 
 let distFilename = "";
-let suffix = "";
+let isWindows = false;
 
 
 switch (platform) {
 	case "win32":
 		distFilename = `${appName}-${version}-windows-amd64.exe`;
-		suffix = ".exe";
+		isWindows = true;
 		break;
 	case "darwin":
 		distFilename = `${appName}-${version}-darwin-amd64`;
@@ -31,6 +31,7 @@ switch (platform) {
 		process.exit(1);
 }
 
+const suffix = isWindows ? ".exe" : "";
 const binFilename = `${appName}${suffix}`;
 
 const source = path.join(distPath, distFilename);
@@ -46,6 +47,10 @@ const emptyBinPath = path.join(binPath, appName);
 if (fs.existsSync(emptyBinPath)) fs.rmSync(emptyBinPath)
 fs.copyFileSync(source, destination);
 
+if (!isWindows) {
+	// "chmod +x up-npm"
+	fs.chmodSync(destination, 0o100);
+}
 
 // Cleanup
 fs.rmdirSync(distPath, { recursive: true });
