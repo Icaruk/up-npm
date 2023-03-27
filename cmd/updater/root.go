@@ -12,10 +12,10 @@ var version = "0.0.2"
 var dev bool
 
 var rootCmd = &cobra.Command{
-	Use:     "updatenpm",
+	Use:     "up-npm",
 	Version: version,
 	Short:   "Updates npm depeendencies",
-	Long:    `updatenpm is a easy way to keep your npm depeendencies up to date.`,
+	Long:    `up-npm is a easy way to keep your npm depeendencies up to date.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		devFlag, err := cmd.Flags().GetBool("dev")
 		if err != nil {
