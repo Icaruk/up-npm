@@ -2,7 +2,7 @@
 
 CLI tool written in Go to review and update your NPM dependencies, easy and fast.
 
-![](https://i.imgur.com/MzzR05S.png)
+![](https://i.imgur.com/8AUJFVb.png)
 
 
 
