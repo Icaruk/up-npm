@@ -1,3 +1,5 @@
+require('dotenv').config();
+
 const os = require("os");
 const fs = require("fs");
 const path = require("path");
@@ -8,8 +10,8 @@ const distPath = path.join(__dirname, "../dist");
 const scriptsPath = path.join(__dirname, "../scripts");
 const binPath = path.join(__dirname, "..");
 
-const appName = "up-npm";
-const version = "0.0.2";
+const appName = process.env.APP_NAME;
+const version = process.env.VERSION;
 
 let distFilename = "";
 let isWindows = false;

@@ -1,6 +1,6 @@
 {
 	"name": "up-npm",
-	"version": "2.0.3",
+	"version": "2.1.0",
 	"author": "Icaruk",
 	"scripts": {
 		"postinstall": "node ./scripts/setup.js"
@@ -32,5 +32,8 @@
 	],
 	"bin": {
 		"up-npm": "up-npm"
+	},
+	"devDependencies": {
+		"dotenv": "^16.0.3"
 	}
 }

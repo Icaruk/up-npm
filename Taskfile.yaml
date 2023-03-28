@@ -2,10 +2,12 @@
 
 version: '3'
 
+dotenv: [".env"]
+
 vars:
   DIST_FOLDER: dist
-  APPNAME: up-npm
-  VERSION: 0.0.2
+  APPNAME: $APP_NAME
+  VERSION: $VERSION
 
 tasks:
   build:

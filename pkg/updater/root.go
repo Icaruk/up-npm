@@ -52,6 +52,7 @@ type VersionComparisonItem struct {
 	versionType   string
 	shouldUpdate  bool
 	homepage      string
+	repositoryUrl string
 	versionPrefix string
 	isDev         bool
 }
@@ -304,6 +305,12 @@ func getCleanVersion(version string) (string, string) {
 	return prefix, cleanVersion
 }
 
+func getRepositoryUrl(url string) string {
+	re := regexp.MustCompile(`^(git\+)(.*)(.git)$`)
+	matches := re.FindStringSubmatch(url)
+	return matches[2]
+}
+
 func readDependencies(dependencyList map[string]string, targetMap map[string]VersionComparisonItem, isDev bool, bar *progressbar.ProgressBar) {
 
 	if !isDev {
@@ -334,6 +341,8 @@ func readDependencies(dependencyList map[string]string, targetMap map[string]Ver
 
 		distTags := result["dist-tags"].(map[string]interface{})
 		homepage := result["homepage"].(string)
+		repository := result["repository"].(map[string]interface{})
+		repositoryUrl := getRepositoryUrl(repository["url"].(string))
 
 		// Get latest version from distTags
 		var latestVersion string
@@ -354,6 +363,7 @@ func readDependencies(dependencyList map[string]string, targetMap map[string]Ver
 				versionType:   versionType,
 				shouldUpdate:  false,
 				homepage:      homepage,
+				repositoryUrl: repositoryUrl,
 				versionPrefix: versionPrefix,
 				isDev:         isDev,
 			}
@@ -446,15 +456,17 @@ func Init(updateDev bool) {
 
 			if response == updatePackageOptions.show_changes {
 				// Open browser url
-				homepage := value.homepage
+				var url string
 
-				if homepage == "" {
-					fmt.Println("No homepage found")
+				if value.repositoryUrl != "" {
+					url = value.repositoryUrl + "/releases"
 				} else {
-					fmt.Println("Opening homepage...")
-					fmt.Println()
-					Openbrowser(homepage)
+					url = value.homepage
 				}
+
+				fmt.Println("Opening...")
+				fmt.Println()
+				Openbrowser(url)
 
 			}
 
