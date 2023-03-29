@@ -384,14 +384,19 @@ func Init(updateDev bool) {
 	// Read json file
 	jsonFile, err := os.ReadFile("package.json")
 	if err != nil {
-		fmt.Println("No package.json found. Please run this command from the root of the project.")
+		fmt.Println(aurora.Red("No package.json found."), "Please run this command from the root of the project.")
+		fmt.Println()
+		return
 	}
 
 	// Parse json file
 	var packageJsonMap PackageJSON
 	err = json.Unmarshal(jsonFile, &packageJsonMap)
 	if err != nil {
+		fmt.Println(aurora.Red("Error reading package.json"), "the file seems corrupt. Error:")
 		fmt.Println(err)
+		fmt.Println()
+		return
 	}
 
 	// Get dependencies
@@ -416,14 +421,21 @@ func Init(updateDev bool) {
 		readDependencies(devDependencies, versionComparison, true, bar)
 	}
 
+	// Count version types
+	totalCount, majorCount, minorCount, patchCount := countVersionTypes(versionComparison)
+	if totalCount == 0 {
+		fmt.Println(aurora.Green("No outdated dependencies!"))
+		fmt.Println("")
+		return
+	}
+
 	// Table
 	fmt.Println("")
 	fmt.Println("")
 	printUpdatablePackagesTable(versionComparison)
 	fmt.Println("")
 
-	// Count version types
-	totalCount, majorCount, minorCount, patchCount := countVersionTypes(versionComparison)
+	// Print summary line (1 major, 1 minor, 1 patch)
 	printSummary(totalCount, majorCount, minorCount, patchCount)
 	fmt.Println()
 
