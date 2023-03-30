@@ -5,6 +5,12 @@ CLI tool written in Go to review and update your NPM dependencies, easy and fast
 ![](https://i.imgur.com/8AUJFVb.png)
 
 
+# Features
+
+- Update each package one by one
+- Check version update before updating it: patch, minor or major
+- Review what's new on each package before updating it
+
 
 # Usage
 

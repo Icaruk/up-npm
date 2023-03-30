@@ -11,6 +11,7 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/AlecAivazis/survey/v2"
@@ -205,7 +206,7 @@ func promptUpdateDependency(options updatePackageOptions, dependency, currentVer
 	return response, err
 }
 
-func promptWriteJson(options writeJsonOptions) string {
+func promptWriteJson(options writeJsonOptions) (string, error) {
 	response := ""
 	prompt := &survey.Select{
 		Message: "Update package.json?",
@@ -215,9 +216,9 @@ func promptWriteJson(options writeJsonOptions) string {
 			options.no,
 		},
 	}
-	survey.AskOne(prompt, &response)
+	err := survey.AskOne(prompt, &response)
 
-	return response
+	return response, err
 }
 
 func getVersionType(currentVersion, latestVersion string) string {
@@ -306,16 +307,32 @@ func getCleanVersion(version string) (string, string) {
 }
 
 func getRepositoryUrl(url string) string {
-	re := regexp.MustCompile(`^(git\+)(.*)(.git)$`)
+	// https://regex101.com/r/AEVsGf/1
+	re := regexp.MustCompile(`^(git\+)(.*)`)
 	matches := re.FindStringSubmatch(url)
-	return matches[2]
+
+	if matches == nil {
+		return ""
+	}
+
+	repoUrl := matches[2]
+	repoUrl = strings.TrimSuffix(repoUrl, ".git")
+
+	return repoUrl
 }
+
+const concurrencyLimit int = 10
 
 func readDependencies(dependencyList map[string]string, targetMap map[string]VersionComparisonItem, isDev bool, bar *progressbar.ProgressBar) {
 
-	if !isDev {
-		isDev = false
-	}
+	var wg sync.WaitGroup
+	semaphoreChan := make(chan struct{}, concurrencyLimit)
+	resultsChan := make(chan string, len(dependencyList))
+	doneChan := make(chan struct{})
+
+	defer func() {
+		close(semaphoreChan)
+	}()
 
 	for dependency, currentVersion := range dependencyList {
 
@@ -327,53 +344,83 @@ func readDependencies(dependencyList map[string]string, targetMap map[string]Ver
 			continue
 		}
 
-		// Perform get request to npm registry
-		resp, err := fetchNpmRegistry(dependency)
-		if err != nil {
-			fmt.Println("Failed to fetch", dependency, " from npm registry, skipping...")
-			continue
-		}
-		defer resp.Body.Close()
+		wg.Add(1)
 
-		// Get response data
-		var result map[string]interface{}
-		json.NewDecoder(resp.Body).Decode(&result)
+		go func(dependency string, currentVersion string) {
+			defer func() {
+				wg.Done()
+				<-semaphoreChan
+			}()
+			semaphoreChan <- struct{}{}
 
-		distTags := result["dist-tags"].(map[string]interface{})
-		homepage := result["homepage"].(string)
-		repository := result["repository"].(map[string]interface{})
-		repositoryUrl := getRepositoryUrl(repository["url"].(string))
-
-		// Get latest version from distTags
-		var latestVersion string
-		for key := range distTags {
-			if key == "latest" {
-				latestVersion = distTags[key].(string)
+			// Perform get request to npm registry
+			resp, err := fetchNpmRegistry(dependency)
+			if err != nil {
+				fmt.Println("Failed to fetch", dependency, " from npm registry, skipping...")
+				resultsChan <- "" // Enviar un resultado vacío para que se tenga en cuenta en la cuenta de resultados
+				return
 			}
-		}
+			defer resp.Body.Close()
 
-		// Get version type (major, minor, patch)
-		versionType := getVersionType(cleanCurrentVersion, latestVersion)
+			// Get response data
+			var result map[string]interface{}
+			json.NewDecoder(resp.Body).Decode(&result)
 
-		// Save data
-		if versionType != "" {
-			targetMap[dependency] = VersionComparisonItem{
-				current:       cleanCurrentVersion,
-				latest:        latestVersion,
-				versionType:   versionType,
-				shouldUpdate:  false,
-				homepage:      homepage,
-				repositoryUrl: repositoryUrl,
-				versionPrefix: versionPrefix,
-				isDev:         isDev,
+			distTags := result["dist-tags"].(map[string]interface{})
+
+			var homepage string
+			if result["homepage"] != nil {
+				homepage = result["homepage"].(string)
 			}
-		}
 
-		if bar != nil {
-			bar.Add(1)
-		}
+			var repository map[string]interface{}
+			if result["repository"] != nil {
+				repository = result["repository"].(map[string]interface{})
+			}
+
+			var repositoryUrl string
+			if repository["url"] != nil {
+				repositoryUrl = getRepositoryUrl(repository["url"].(string))
+			}
+
+			// Get latest version from distTags
+			var latestVersion string
+			for key := range distTags {
+				if key == "latest" {
+					latestVersion = distTags[key].(string)
+				}
+			}
+
+			// Get version type (major, minor, patch)
+			versionType := getVersionType(cleanCurrentVersion, latestVersion)
+
+			// Save data
+			if versionType != "" {
+				targetMap[dependency] = VersionComparisonItem{
+					current:       cleanCurrentVersion,
+					latest:        latestVersion,
+					versionType:   versionType,
+					shouldUpdate:  false,
+					homepage:      homepage,
+					repositoryUrl: repositoryUrl,
+					versionPrefix: versionPrefix,
+					isDev:         isDev,
+				}
+			}
+
+			resultsChan <- ""
+
+			if bar != nil {
+				bar.Add(1)
+			}
+
+		}(dependency, currentVersion)
 
 	}
+
+	// Wait for all goroutines to complete
+	wg.Wait()
+	close(doneChan)
 
 }
 
@@ -393,7 +440,7 @@ func Init(updateDev bool) {
 	var packageJsonMap PackageJSON
 	err = json.Unmarshal(jsonFile, &packageJsonMap)
 	if err != nil {
-		fmt.Println(aurora.Red("Error reading package.json"), "the file seems corrupt. Error:")
+		fmt.Println(aurora.Red("Error reading package.json"), "invalid JSON or corrupt file. Error:")
 		fmt.Println(err)
 		fmt.Println()
 		return
@@ -424,8 +471,10 @@ func Init(updateDev bool) {
 	// Count version types
 	totalCount, majorCount, minorCount, patchCount := countVersionTypes(versionComparison)
 	if totalCount == 0 {
+		fmt.Println()
+		fmt.Println()
 		fmt.Println(aurora.Green("No outdated dependencies!"))
-		fmt.Println("")
+		fmt.Println()
 		return
 	}
 
@@ -436,6 +485,7 @@ func Init(updateDev bool) {
 	fmt.Println("")
 
 	// Print summary line (1 major, 1 minor, 1 patch)
+	fmt.Println("Total dependencies:", aurora.Blue(totalCount))
 	printSummary(totalCount, majorCount, minorCount, patchCount)
 	fmt.Println()
 
@@ -471,9 +521,14 @@ func Init(updateDev bool) {
 				var url string
 
 				if value.repositoryUrl != "" {
-					url = value.repositoryUrl + "/releases"
+					url = value.repositoryUrl + "/releases" + "#:~:text=" + value.current
 				} else {
 					url = value.homepage
+				}
+
+				if url == "" {
+					fmt.Println(aurora.Yellow("No repository or homepage URL found"))
+					break
 				}
 
 				fmt.Println("Opening...")
@@ -508,6 +563,26 @@ func Init(updateDev bool) {
 
 	// ------------------------------------------
 
+	// Check how many updates are on versionComparison with value.shouldUpdate = true
+	var shouldUpdateCount int
+	for _, value := range versionComparison {
+		if value.shouldUpdate {
+			shouldUpdateCount++
+		}
+	}
+
+	if shouldUpdateCount == 0 {
+		fmt.Println(aurora.Yellow("No packages have been selected to update"))
+		return
+	}
+
+	fmt.Println(
+		aurora.Green("There are"),
+		aurora.Green(shouldUpdateCount),
+		aurora.Green("package(s) selected to be updated"),
+	)
+	fmt.Println()
+
 	// Prompt to write package.json
 	writeJsonOptions := writeJsonOptions{
 		yes:        "Yes",
@@ -515,7 +590,13 @@ func Init(updateDev bool) {
 		no:         "No",
 	}
 
-	response := promptWriteJson(writeJsonOptions)
+	response, err := promptWriteJson(writeJsonOptions)
+
+	if err != nil {
+		if err == terminal.InterruptErr {
+			log.Fatal("interrupted")
+		}
+	}
 
 	if response == writeJsonOptions.no {
 		fmt.Println("Cancelled update process")
@@ -552,7 +633,13 @@ func Init(updateDev bool) {
 	}
 
 	fmt.Println()
-	fmt.Println(aurora.Green("Updated package.json"))
+	fmt.Println(
+		"✅ package.json has been updated with",
+		aurora.Sprintf(aurora.Green("%d updated packages"), shouldUpdateCount),
+	)
+	fmt.Println()
+
 	fmt.Println("Run 'npm install' to install dependencies")
+	fmt.Println()
 
 }
