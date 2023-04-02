@@ -16,4 +16,9 @@ tasks:
       - CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -ldflags="-s -w" -trimpath -tags=netgo -o {{.DIST_FOLDER}}/{{.APPNAME}}-{{.VERSION}}-darwin-amd64
       - CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -trimpath -tags=netgo -o {{.DIST_FOLDER}}/{{.APPNAME}}-{{.VERSION}}-linux-amd64
       - echo "Build complete"
+      - task: checksum
+    silent: false
+  checksum:
+    cmds:
+      - go run ./utils/checksum.go
     silent: false
