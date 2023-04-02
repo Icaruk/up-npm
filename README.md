@@ -20,21 +20,31 @@ Go where your `package.json` is located and run:
 up-npm [flags]
 ```
 
-Flags:
 
-- -h, --help      help
-- -v, --version   version
-- -d, --dev       Update dev dependencies
+| Flag              	| Description                                   |
+|---------------------	|-----------------------------------------------|
+| -d, --dev           	| Update dev dependencies                       |
+| -f, --filter `string` | Filter dependencies by package name           |
+| -h, --help          	| Display help information for up-npm           |
+| -v, --version       	| Display the version number for up-npm         |
 
 
 
 # Examples
 
-- Update dependencies:
-`npm-up`
+```bash
+# Update dependencies
+npm-up
 
-- Update dependencies including _devDependencies:_
-`npm-up --dev` or `npm-up -d`
+# Including dev dependencies
+npm-up --dev
+npm-up -d
+
+# Update only packages containing "lint"
+npm-up -filter lint
+npm-up -f lint
+
+```
 
 
 
