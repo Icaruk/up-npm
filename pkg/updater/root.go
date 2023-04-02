@@ -74,6 +74,14 @@ func colorizeVersion(version string, versionType string) string {
 	return colorizedVersion
 }
 
+func printUpdateProgress(current int, max int) string {
+	return fmt.Sprintf(
+		"(%d/%d)",
+		current,
+		max,
+	)
+}
+
 func printUpdatablePackagesTable(versionComparison map[string]VersionComparisonItem) {
 	t := table.NewWriter()
 	t.SetOutputMirror(os.Stdout)
@@ -154,10 +162,9 @@ func fetchNpmRegistry(dependency string) (*http.Response, error) {
 func countVersionTypes(
 	versionComparison map[string]VersionComparisonItem,
 ) (
-	totalCount int, majorCount int, minorCount int, patchCount int,
+	majorCount int, minorCount int, patchCount int,
 ) {
 	for _, value := range versionComparison {
-		totalCount++
 
 		if value.versionType == "major" {
 			majorCount++
@@ -184,11 +191,20 @@ type writeJsonOptions struct {
 	no         string
 }
 
-func promptUpdateDependency(options updatePackageOptions, dependency, currentVersion, latestVersion, versionType string) (string, error) {
+func promptUpdateDependency(
+	options updatePackageOptions,
+	dependency,
+	currentVersion,
+	latestVersion,
+	versionType string,
+	updateProgressCount int,
+	maxUpdateProgress int,
+) (string, error) {
 	response := ""
 	prompt := &survey.Select{
 		Message: fmt.Sprintf(
-			"Update \"%s\" from %s to %s?",
+			"%s Update \"%s\" from %s to %s?",
+			printUpdateProgress(updateProgressCount, maxUpdateProgress),
 			dependency,
 			currentVersion,
 			colorizeVersion(latestVersion, versionType),
@@ -323,7 +339,13 @@ func getRepositoryUrl(url string) string {
 
 const concurrencyLimit int = 10
 
-func readDependencies(dependencyList map[string]string, targetMap map[string]VersionComparisonItem, isDev bool, bar *progressbar.ProgressBar) {
+func readDependencies(
+	dependencyList map[string]string,
+	targetMap map[string]VersionComparisonItem,
+	isDev bool,
+	bar *progressbar.ProgressBar,
+	filter string,
+) {
 
 	var wg sync.WaitGroup
 	semaphoreChan := make(chan struct{}, concurrencyLimit)
@@ -334,13 +356,20 @@ func readDependencies(dependencyList map[string]string, targetMap map[string]Ver
 		close(semaphoreChan)
 	}()
 
-	for dependency, currentVersion := range dependencyList {
+	for packageName, currentVersion := range dependencyList {
+
+		// Check filter
+		if filter != "" {
+			if !strings.Contains(packageName, filter) {
+				continue
+			}
+		}
 
 		// Get version and prefix
 		versionPrefix, cleanCurrentVersion := getCleanVersion(currentVersion)
 
 		if cleanCurrentVersion == "" {
-			fmt.Println(dependency, " has unsupported/invalid version, skipping...")
+			fmt.Println(packageName, " has unsupported/invalid version, skipping...")
 			continue
 		}
 
@@ -414,7 +443,7 @@ func readDependencies(dependencyList map[string]string, targetMap map[string]Ver
 				bar.Add(1)
 			}
 
-		}(dependency, currentVersion)
+		}(packageName, currentVersion)
 
 	}
 
@@ -424,7 +453,7 @@ func readDependencies(dependencyList map[string]string, targetMap map[string]Ver
 
 }
 
-func Init(updateDev bool) {
+func Init(updateDev bool, filter string) {
 
 	fmt.Println()
 
@@ -463,13 +492,23 @@ func Init(updateDev bool) {
 	maxBar := len(dependencies)
 	bar := initProgressBar(maxBar)
 
-	readDependencies(dependencies, versionComparison, false, bar)
+	// Process dependencies
+	totalCount := len(dependencies)
+	readDependencies(dependencies, versionComparison, false, bar, filter)
+
 	if updateDev {
-		readDependencies(devDependencies, versionComparison, true, bar)
+		totalCount += len(devDependencies)
+		readDependencies(devDependencies, versionComparison, true, bar, filter)
+	}
+
+	// Count total dependencies and filtered dependencies
+	filteredCount := totalCount
+	if filter != "" {
+		filteredCount = len(versionComparison)
 	}
 
 	// Count version types
-	totalCount, majorCount, minorCount, patchCount := countVersionTypes(versionComparison)
+	majorCount, minorCount, patchCount := countVersionTypes(versionComparison)
 	if totalCount == 0 {
 		fmt.Println()
 		fmt.Println()
@@ -485,8 +524,13 @@ func Init(updateDev bool) {
 	fmt.Println("")
 
 	// Print summary line (1 major, 1 minor, 1 patch)
-	fmt.Println("Total dependencies:", aurora.Blue(totalCount))
-	printSummary(totalCount, majorCount, minorCount, patchCount)
+	if filter != "" {
+		fmt.Println("Filtered", aurora.Blue(filteredCount), "dependencies from a total of", aurora.Blue(totalCount))
+	} else {
+		fmt.Println("Total dependencies: ", aurora.Blue(totalCount))
+	}
+
+	printSummary(filteredCount, majorCount, minorCount, patchCount)
 	fmt.Println()
 
 	// Prompt user to update each dependency
@@ -497,13 +541,16 @@ func Init(updateDev bool) {
 		finish:       "Finish",
 	}
 
+	updateProgressCount := 1
+
 	for key, value := range versionComparison {
 
 		exit := false
 
 		for {
 
-			response, err := promptUpdateDependency(updatePackageOptions, key, value.current, value.latest, value.versionType)
+			response, err := promptUpdateDependency(updatePackageOptions, key, value.current, value.latest, value.versionType, updateProgressCount, filteredCount)
+			updateProgressCount++
 
 			if err != nil {
 				if err == terminal.InterruptErr {
@@ -512,7 +559,6 @@ func Init(updateDev bool) {
 			}
 
 			if response == updatePackageOptions.skip {
-				fmt.Println("Skipping update for \"", key, "\"")
 				break
 			}
 

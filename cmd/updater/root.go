@@ -21,13 +21,20 @@ var rootCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		updater.Init(devFlag)
+
+		filterFlag, err := cmd.Flags().GetString("filter")
+		if err != nil {
+			return err
+		}
+
+		updater.Init(devFlag, filterFlag)
 		return nil
 	},
 }
 
 func init() {
 	rootCmd.Flags().BoolVarP(&dev, "dev", "d", false, "Update dev dependencies")
+	rootCmd.Flags().StringP("filter", "f", "", "Filter dependencies by package name")
 }
 
 func Execute() {
