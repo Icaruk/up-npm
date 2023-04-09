@@ -10,7 +10,7 @@ const scriptsPath = path.join(__dirname, "../scripts");
 const binPath = path.join(__dirname, "..");
 
 const appName = "up-npm";
-const version = "2.3.0";
+const version = "2.3.1";
 
 let distFilename = "";
 let isWindows = false;
