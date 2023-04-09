@@ -49,8 +49,8 @@ if (fs.existsSync(emptyBinPath)) fs.rmSync(emptyBinPath)
 fs.copyFileSync(source, destination);
 
 if (!isWindows) {
-	// "chmod +x up-npm"
-	fs.chmodSync(destination, 0o100);
+	// "chmod +rwx up-npm"
+	fs.chmodSync(destination, 0o700);
 }
 
 // Cleanup
