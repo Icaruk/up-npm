@@ -6,15 +6,23 @@ dotenv: [".env"]
 
 vars:
   DIST_FOLDER: dist
-  APPNAME: $APP_NAME
+  APPNAME: up-npm
   VERSION: $VERSION
+  OS_WINDOWS: windows
+  OS_DARWIN: darwin
+  OS_LINUX: linux
+  ARCH_386: 386
+  ARCH_AMD64: amd64
 
 tasks:
   build:
     cmds:
-      - CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -ldflags="-s -w" -trimpath -tags=netgo -o {{.DIST_FOLDER}}/{{.APPNAME}}-{{.VERSION}}-windows-amd64.exe
-      - CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -ldflags="-s -w" -trimpath -tags=netgo -o {{.DIST_FOLDER}}/{{.APPNAME}}-{{.VERSION}}-darwin-amd64
-      - CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -trimpath -tags=netgo -o {{.DIST_FOLDER}}/{{.APPNAME}}-{{.VERSION}}-linux-amd64
+      - CGO_ENABLED=0 GOOS={{.OS_WINDOWS}} GOARCH={{.ARCH_386}} go build -ldflags="-s -w" -trimpath -tags=netgo -o {{.DIST_FOLDER}}/{{.APPNAME}}-{{.VERSION}}-{{.OS_WINDOWS}}-{{.ARCH_386}}.exe
+      - CGO_ENABLED=0 GOOS={{.OS_WINDOWS}} GOARCH={{.ARCH_AMD64}} go build -ldflags="-s -w" -trimpath -tags=netgo -o {{.DIST_FOLDER}}/{{.APPNAME}}-{{.VERSION}}-{{.OS_WINDOWS}}-{{.ARCH_AMD64}}.exe
+      - CGO_ENABLED=0 GOOS={{OS_DARWDIN}} GOARCH={{.ARCH_386}} go build -ldflags="-s -w" -trimpath -tags=netgo -o {{.DIST_FOLDER}}/{{.APPNAME}}-{{.VERSION}}-{{OS_DARWDIN}}-{{.ARCH_386}}
+      - CGO_ENABLED=0 GOOS={{OS_DARWDIN}} GOARCH={{.ARCH_AMD64}} go build -ldflags="-s -w" -trimpath -tags=netgo -o {{.DIST_FOLDER}}/{{.APPNAME}}-{{.VERSION}}-{{OS_DARWDIN}}-{{.ARCH_AMD64}}
+      - CGO_ENABLED=0 GOOS={{.OS_LINUX}} GOARCH={{.ARCH_386}} go build -ldflags="-s -w" -trimpath -tags=netgo -o {{.DIST_FOLDER}}/{{.APPNAME}}-{{.VERSION}}-{{.OS_LINUX}}-{{.ARCH_386}}
+      - CGO_ENABLED=0 GOOS={{.OS_LINUX}} GOARCH={{.ARCH_AMD64}} go build -ldflags="-s -w" -trimpath -tags=netgo -o {{.DIST_FOLDER}}/{{.APPNAME}}-{{.VERSION}}-{{.OS_LINUX}}-{{.ARCH_AMD64}}
       - echo "Build complete"
       - task: checksum
     silent: false

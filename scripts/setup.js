@@ -12,6 +12,10 @@ const binPath = path.join(__dirname, "..");
 const appName = "up-npm";
 const version = "2.3.1";
 
+const b = fs.readFileSync("version.txt").toString()
+console.log( b )
+return;
+
 let distFilename = "";
 let isWindows = false;
 
