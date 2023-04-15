@@ -5,7 +5,7 @@ const path = require("path");
 
 const platform = os.platform();
 
-const currentVersionPath = "version";
+const currentVersionPath = ".version";
 const binPath = path.join(__dirname, "../bin");
 
 const appName = "up-npm";
@@ -41,7 +41,7 @@ async function downloadBinary() {
 		let currentVersion = "0.0.0";
 		
 		if (fs.existsSync(currentVersionPath)) {
-			currentVersion = fs.readFileSync("version").toString();
+			currentVersion = fs.readFileSync(currentVersionPath).toString();
 			console.log( `Current version: ${currentVersion}` )
 		};
 		
@@ -132,7 +132,7 @@ async function downloadBinary() {
 			fs.chmodSync(destination, 0o700);
 		}
 		
-		fs.writeFileSync("version", latestVersion);
+		fs.writeFileSync(currentVersionPath, latestVersion);
 		
 	} catch (err) {
 		console.error(err)

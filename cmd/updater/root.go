@@ -40,7 +40,7 @@ func init() {
 		fmt.Println(err)
 	}
 
-	localVersionPath := filepath.Join(filepath.Dir(binaryPath), "../version")
+	localVersionPath := filepath.Join(filepath.Dir(binaryPath), "../.version")
 
 	localVersion := "0.0.0"
 	localVersionByte, err := os.ReadFile(localVersionPath)
