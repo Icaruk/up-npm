@@ -27,8 +27,8 @@
 	],
 	"files": [
 		"scripts",
-		"bin",
-		"version"
+		"bin/up-npm",
+		".version"
 	],
 	"bin": {
 		"up-npm": "bin/up-npm"
