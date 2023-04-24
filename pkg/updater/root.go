@@ -611,7 +611,7 @@ func Init(cfg CmdFlags) {
 	if isFilterFilled {
 		fmt.Println("Filtered", aurora.Blue(filteredDependencyCount), "dependencies from a total of", aurora.Blue(dependencyCount))
 	} else {
-		fmt.Println("Total dependencies: ", aurora.Blue(filteredDependencyCount))
+		fmt.Println("Total dependencies: ", aurora.Cyan(filteredDependencyCount))
 	}
 
 	printSummary(totalCount, majorCount, minorCount, patchCount)
