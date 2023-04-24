@@ -9,14 +9,24 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var dev bool
+var Cfg = updater.CmdFlags{
+	Dev:            false,
+	AllowDowngrade: false,
+	Filter:         "",
+}
 
 var rootCmd = &cobra.Command{
 	Use:   "up-npm",
 	Short: "Updates npm depeendencies",
 	Long:  `up-npm is a easy way to keep your npm depeendencies up to date.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
+
 		devFlag, err := cmd.Flags().GetBool("dev")
+		if err != nil {
+			return err
+		}
+
+		allowDowngradeFlag, err := cmd.Flags().GetBool("dev")
 		if err != nil {
 			return err
 		}
@@ -26,14 +36,25 @@ var rootCmd = &cobra.Command{
 			return err
 		}
 
-		updater.Init(devFlag, filterFlag)
+		Cfg = updater.CmdFlags{
+			Dev:            devFlag,
+			AllowDowngrade: allowDowngradeFlag,
+			Filter:         filterFlag,
+		}
+
+		Cfg.Dev = devFlag
+		Cfg.AllowDowngrade = devFlag
+
+		updater.Init(Cfg)
+
 		return nil
 	},
 }
 
 func init() {
-	rootCmd.Flags().BoolVarP(&dev, "dev", "d", false, "Include dev dependencies")
-	rootCmd.Flags().StringP("filter", "f", "", "Filter dependencies by package name")
+	rootCmd.Flags().BoolVarP(&Cfg.Dev, "dev", "d", false, "Include dev dependencies")
+	rootCmd.Flags().StringVarP(&Cfg.Filter, "filter", "f", "", "Filter dependencies by package name")
+	rootCmd.Flags().BoolVar(&Cfg.AllowDowngrade, "allow-downgrade", false, "Allows downgrading a if latest version is older than current")
 
 	binaryPath, err := os.Executable()
 	if err != nil {
