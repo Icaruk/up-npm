@@ -22,6 +22,12 @@ import (
 	"github.com/tidwall/sjson"
 )
 
+type CmdFlags struct {
+	Dev            bool
+	AllowDowngrade bool
+	Filter         string
+}
+
 type PackageJSON struct {
 	Name            string            `json:"name"`
 	Version         string            `json:"version"`
@@ -98,7 +104,7 @@ func printUpdatablePackagesTable(versionComparison map[string]VersionComparisonI
 
 }
 
-func printSummary(totalCount int, patchCount int, minorCount int, majorCount int) {
+func printSummary(totalCount int, majorCount int, minorCount int, patchCount int) {
 
 	baseSt := fmt.Sprintf("Found %d packages to update", totalCount)
 
@@ -162,17 +168,22 @@ func fetchNpmRegistry(dependency string) (*http.Response, error) {
 func countVersionTypes(
 	versionComparison map[string]VersionComparisonItem,
 ) (
-	majorCount int, minorCount int, patchCount int,
+	majorCount int, minorCount int, patchCount int, totalCount int,
 ) {
 	for _, value := range versionComparison {
 
-		if value.versionType == "major" {
+		fmt.Println(value)
+
+		switch value.versionType {
+		case "major":
 			majorCount++
-		} else if value.versionType == "minor" {
+		case "minor":
 			minorCount++
-		} else if value.versionType == "patch" {
+		case "patch":
 			patchCount++
 		}
+
+		totalCount++
 	}
 
 	return
@@ -237,21 +248,74 @@ func promptWriteJson(options writeJsonOptions) (string, error) {
 	return response, err
 }
 
-func getVersionType(currentVersion, latestVersion string) string {
-	vCurrentMajor, vCurrentMinor, vCurrentPatch := getVersionComponents(currentVersion)
-	vLatestMajor, vLatestMinor, vLatestPatch := getVersionComponents(latestVersion)
+type UpgradeType string
+type UpgradeDirection string
 
-	var versionType string
+const (
+	UpgradeTypeNone  UpgradeType = "none"
+	UpgradeTypeMajor UpgradeType = "major"
+	UpgradeTypeMinor UpgradeType = "minor"
+	UpgradeTypePatch UpgradeType = "patch"
+)
+const (
+	UpgradeDirectionNone      UpgradeDirection = "none"
+	UpgradeDirectionUpgrade   UpgradeDirection = "upgrade"
+	UpgradeDirectionDowngrade UpgradeDirection = "downgrade"
+)
 
-	if vLatestMajor > vCurrentMajor {
-		versionType = "major"
-	} else if vLatestMinor > vCurrentMinor {
-		versionType = "minor"
-	} else if vLatestPatch > vCurrentPatch {
-		versionType = "patch"
+func getVersionUpdateType(currentVersion, latestVersion string) (upgradeType string, upgradeDirection string) {
+
+	if latestVersion == currentVersion {
+		return "none", "none"
 	}
 
-	return versionType
+	currentArr := strings.Split(currentVersion, ".") // 1.0.0
+	latestArr := strings.Split(latestVersion, ".")   // 0.9.9
+
+	versionChange := []int{0, 0, 0}
+
+	for i := 0; i < len(currentArr); i++ {
+		vCur, _ := strconv.Atoi(currentArr[i])
+		vLat, _ := strconv.Atoi(latestArr[i])
+
+		// 0 = major
+		// 1 = minor
+		// 2 = patch
+
+		var changeDirection int
+
+		if vLat > vCur {
+			changeDirection = 1
+		} else if vLat < vCur {
+			changeDirection = -1
+		}
+
+		versionChange[i] = changeDirection
+
+	}
+
+	for i, change := range versionChange {
+		if change == -1 {
+			if i == 0 {
+				return "major", "downgrade"
+			} else if i == 1 {
+				return "minor", "downgrade"
+			} else {
+				return "patch", "downgrade"
+			}
+		}
+		if change == 1 {
+			if i == 0 {
+				return "major", "upgrade"
+			} else if i == 1 {
+				return "minor", "upgrade"
+			} else {
+				return "patch", "upgrade"
+			}
+		}
+	}
+
+	return "none", "none"
 }
 
 func initProgressBar(maxBar int) *progressbar.ProgressBar {
@@ -438,15 +502,15 @@ func readDependencies(
 				}
 			}
 
-			// Get version type (major, minor, patch)
-			versionType := getVersionType(cleanCurrentVersion, latestVersion)
+			// Get version update type (major, minor, patch, none)
+			upgradeType, upgradeDirection := getVersionUpdateType(cleanCurrentVersion, latestVersion)
 
 			// Save data
-			if versionType != "" {
+			if upgradeDirection == "upgrade" {
 				targetMap[dependency] = VersionComparisonItem{
 					current:       cleanCurrentVersion,
 					latest:        latestVersion,
-					versionType:   versionType,
+					versionType:   upgradeType,
 					shouldUpdate:  false,
 					homepage:      homepage,
 					repositoryUrl: repositoryUrl,
@@ -471,7 +535,9 @@ func readDependencies(
 
 }
 
-func Init(updateDev bool, filter string) {
+func Init(cfg CmdFlags) {
+
+	var isFilterFilled bool = cfg.Filter != ""
 
 	fmt.Println()
 
@@ -497,7 +563,7 @@ func Init(updateDev bool, filter string) {
 	dependencies := packageJsonMap.Dependencies
 	devDependencies := packageJsonMap.DevDependencies
 
-	if updateDev {
+	if cfg.Dev {
 		// Merge devDependencies with dependencies
 		for key, value := range devDependencies {
 			dependencies[key] = value
@@ -511,23 +577,23 @@ func Init(updateDev bool, filter string) {
 	bar := initProgressBar(maxBar)
 
 	// Process dependencies
-	totalCount := len(dependencies)
-	readDependencies(dependencies, versionComparison, false, bar, filter)
+	dependencyCount := len(dependencies)
+	readDependencies(dependencies, versionComparison, false, bar, cfg.Filter)
 
-	if updateDev {
-		totalCount += len(devDependencies)
-		readDependencies(devDependencies, versionComparison, true, bar, filter)
+	if cfg.Dev {
+		dependencyCount += len(devDependencies)
+		readDependencies(devDependencies, versionComparison, true, bar, cfg.Filter)
 	}
 
 	// Count total dependencies and filtered dependencies
-	filteredCount := totalCount
-	if filter != "" {
-		filteredCount = len(versionComparison)
+	filteredDependencyCount := dependencyCount
+	if isFilterFilled {
+		filteredDependencyCount = len(versionComparison)
 	}
 
 	// Count version types
-	majorCount, minorCount, patchCount := countVersionTypes(versionComparison)
-	if totalCount == 0 {
+	majorCount, minorCount, patchCount, totalCount := countVersionTypes(versionComparison)
+	if filteredDependencyCount == 0 {
 		fmt.Println()
 		fmt.Println()
 		fmt.Println(aurora.Green("No outdated dependencies!"))
@@ -542,13 +608,13 @@ func Init(updateDev bool, filter string) {
 	fmt.Println("")
 
 	// Print summary line (1 major, 1 minor, 1 patch)
-	if filter != "" {
-		fmt.Println("Filtered", aurora.Blue(filteredCount), "dependencies from a total of", aurora.Blue(totalCount))
+	if isFilterFilled {
+		fmt.Println("Filtered", aurora.Blue(filteredDependencyCount), "dependencies from a total of", aurora.Blue(dependencyCount))
 	} else {
-		fmt.Println("Total dependencies: ", aurora.Blue(totalCount))
+		fmt.Println("Total dependencies: ", aurora.Blue(filteredDependencyCount))
 	}
 
-	printSummary(filteredCount, majorCount, minorCount, patchCount)
+	printSummary(totalCount, majorCount, minorCount, patchCount)
 	fmt.Println()
 
 	// Prompt user to update each dependency
@@ -567,7 +633,15 @@ func Init(updateDev bool, filter string) {
 
 		for {
 
-			response, err := promptUpdateDependency(updatePackageOptions, key, value.current, value.latest, value.versionType, updateProgressCount, filteredCount)
+			response, err := promptUpdateDependency(
+				updatePackageOptions,
+				key,
+				value.current,
+				value.latest,
+				value.versionType,
+				updateProgressCount,
+				totalCount,
+			)
 			updateProgressCount++
 
 			if err != nil {
