@@ -426,7 +426,7 @@ func readDependencies(
 	targetMap map[string]VersionComparisonItem,
 	isDev bool,
 	bar *progressbar.ProgressBar,
-	filter string,
+	cfg CmdFlags,
 ) {
 
 	var wg sync.WaitGroup
@@ -441,8 +441,8 @@ func readDependencies(
 	for packageName, currentVersion := range dependencyList {
 
 		// Check filter
-		if filter != "" {
-			if !strings.Contains(packageName, filter) {
+		if cfg.Filter != "" {
+			if !strings.Contains(packageName, cfg.Filter) {
 				continue
 			}
 		}
@@ -506,7 +506,8 @@ func readDependencies(
 			upgradeType, upgradeDirection := getVersionUpdateType(cleanCurrentVersion, latestVersion)
 
 			// Save data
-			if upgradeDirection == "upgrade" {
+			if (upgradeDirection == "upgrade") ||
+				(cfg.AllowDowngrade && upgradeDirection == "downgrade") {
 				targetMap[dependency] = VersionComparisonItem{
 					current:       cleanCurrentVersion,
 					latest:        latestVersion,
@@ -578,11 +579,11 @@ func Init(cfg CmdFlags) {
 
 	// Process dependencies
 	dependencyCount := len(dependencies)
-	readDependencies(dependencies, versionComparison, false, bar, cfg.Filter)
+	readDependencies(dependencies, versionComparison, false, bar, cfg)
 
 	if cfg.Dev {
 		dependencyCount += len(devDependencies)
-		readDependencies(devDependencies, versionComparison, true, bar, cfg.Filter)
+		readDependencies(devDependencies, versionComparison, true, bar, cfg)
 	}
 
 	// Count total dependencies and filtered dependencies

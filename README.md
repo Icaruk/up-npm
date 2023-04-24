@@ -26,12 +26,13 @@ or
 up-npm [flags]
 ```
 
-| Flag              	| Description                                   |
-|---------------------	|-----------------------------------------------|
-| -d, --dev           	| Include dev dependencies                      |
-| -f, --filter `string` | Filter dependencies by package name           |
-| -h, --help          	| Display help information for up-npm           |
-| -v, --version       	| Display the version number for up-npm         |
+| Flag              	| Description                                   				|
+|---------------------	|-------------------------------------------------------------  |
+| -d, --dev           	| Include dev dependencies                      				|
+| -f, --filter `string` | Filter dependencies by package name           				|
+| --allow-downgrade     | Allows downgrading a if latest version is older than current 	|
+| -h, --help          	| Display help information for up-npm           				|
+| -v, --version       	| Display the version number for up-npm         				|
 
 
 
