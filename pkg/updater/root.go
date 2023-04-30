@@ -249,7 +249,7 @@ func promptWriteJson(options writeJsonOptions) (string, error) {
 }
 
 type UpgradeType string
-type UpgradeDirection string
+type UpgradeDirection int
 
 const (
 	UpgradeTypeNone  UpgradeType = "none"
@@ -258,15 +258,15 @@ const (
 	UpgradeTypePatch UpgradeType = "patch"
 )
 const (
-	UpgradeDirectionNone      UpgradeDirection = "none"
-	UpgradeDirectionUpgrade   UpgradeDirection = "upgrade"
-	UpgradeDirectionDowngrade UpgradeDirection = "downgrade"
+	UpgradeDirectionNone      UpgradeDirection = 0
+	UpgradeDirectionUpgrade   UpgradeDirection = 1
+	UpgradeDirectionDowngrade UpgradeDirection = -1
 )
 
-func getVersionUpdateType(currentVersion, latestVersion string) (upgradeType string, upgradeDirection string) {
+func getVersionUpdateType(currentVersion, latestVersion string) (upgradeType string, upgradeDirection int) {
 
 	if latestVersion == currentVersion {
-		return "none", "none"
+		return "none", 0
 	}
 
 	currentArr := strings.Split(currentVersion, ".") // 1.0.0
@@ -297,25 +297,25 @@ func getVersionUpdateType(currentVersion, latestVersion string) (upgradeType str
 	for i, change := range versionChange {
 		if change == -1 {
 			if i == 0 {
-				return "major", "downgrade"
+				return "major", change
 			} else if i == 1 {
-				return "minor", "downgrade"
+				return "minor", change
 			} else {
-				return "patch", "downgrade"
+				return "patch", change
 			}
 		}
 		if change == 1 {
 			if i == 0 {
-				return "major", "upgrade"
+				return "major", change
 			} else if i == 1 {
-				return "minor", "upgrade"
+				return "minor", change
 			} else {
-				return "patch", "upgrade"
+				return "patch", change
 			}
 		}
 	}
 
-	return "none", "none"
+	return "none", 0
 }
 
 func initProgressBar(maxBar int) *progressbar.ProgressBar {
@@ -506,8 +506,8 @@ func readDependencies(
 			upgradeType, upgradeDirection := getVersionUpdateType(cleanCurrentVersion, latestVersion)
 
 			// Save data
-			if (upgradeDirection == "upgrade") ||
-				(cfg.AllowDowngrade && upgradeDirection == "downgrade") {
+			if (upgradeDirection == 1) ||
+				(cfg.AllowDowngrade && upgradeDirection == -1) {
 				targetMap[dependency] = VersionComparisonItem{
 					current:       cleanCurrentVersion,
 					latest:        latestVersion,

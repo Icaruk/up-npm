@@ -10,18 +10,18 @@ func TestGetVersionUpdateType(t *testing.T) {
 		current           string
 		latest            string
 		expectedType      string
-		expectedDirection string
+		expectedDirection int
 	}{
-		{name: "Test Case 1", current: "1.0.0", latest: "1.0.1", expectedType: "patch", expectedDirection: "upgrade"},
-		{name: "Test Case 2", current: "1.0.0", latest: "1.1.0", expectedType: "minor", expectedDirection: "upgrade"},
-		{name: "Test Case 3", current: "1.0.0", latest: "2.0.0", expectedType: "major", expectedDirection: "upgrade"},
-		{name: "Test Case 4", current: "2.0.0", latest: "2.0.0", expectedType: "none", expectedDirection: "none"},
-		{name: "Test Case 5", current: "1.9.9", latest: "2.1.2", expectedType: "major", expectedDirection: "upgrade"},
-		{name: "Test Case 6", current: "3.5.6", latest: "3.6.9", expectedType: "minor", expectedDirection: "upgrade"},
-		{name: "Test Case 7", current: "20.10.10", latest: "20.10.11", expectedType: "patch", expectedDirection: "upgrade"},
-		{name: "Test Case 8", current: "1.1.1", latest: "0.1.1", expectedType: "major", expectedDirection: "downgrade"},
-		{name: "Test Case 9", current: "1.1.1", latest: "1.0.1", expectedType: "minor", expectedDirection: "downgrade"},
-		{name: "Test Case 10", current: "1.1.1", latest: "1.1.0", expectedType: "patch", expectedDirection: "downgrade"},
+		{name: "Test Case 1", current: "1.0.0", latest: "1.0.1", expectedType: "patch", expectedDirection: 1},
+		{name: "Test Case 2", current: "1.0.0", latest: "1.1.0", expectedType: "minor", expectedDirection: 1},
+		{name: "Test Case 3", current: "1.0.0", latest: "2.0.0", expectedType: "major", expectedDirection: 1},
+		{name: "Test Case 4", current: "2.0.0", latest: "2.0.0", expectedType: "none", expectedDirection: 0},
+		{name: "Test Case 5", current: "1.9.9", latest: "2.1.2", expectedType: "major", expectedDirection: 1},
+		{name: "Test Case 6", current: "3.5.6", latest: "3.6.9", expectedType: "minor", expectedDirection: 1},
+		{name: "Test Case 7", current: "20.10.10", latest: "20.10.11", expectedType: "patch", expectedDirection: 1},
+		{name: "Test Case 8", current: "1.1.1", latest: "0.1.1", expectedType: "major", expectedDirection: -1},
+		{name: "Test Case 9", current: "1.1.1", latest: "1.0.1", expectedType: "minor", expectedDirection: -1},
+		{name: "Test Case 10", current: "1.1.1", latest: "1.1.0", expectedType: "patch", expectedDirection: -1},
 	}
 
 	for _, tc := range testCases {

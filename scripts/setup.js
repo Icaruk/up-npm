@@ -2,6 +2,7 @@
 const os = require("os");
 const fs = require("fs");
 const path = require("path");
+const https = require("https");
 
 const platform = os.platform();
 
@@ -35,30 +36,139 @@ function compareSemver(versionA, versionB) {
 	return 0;
 };
 
-async function downloadBinary() {
+function getCurrentVersion() {
+	
+	let currentVersion = "0.0.0";
+	
+	if (fs.existsSync(currentVersionPath)) {
+		currentVersion = fs.readFileSync(currentVersionPath).toString();
+	};
+	
+	return currentVersion;
+}
+
+/**
+ * @returns {Promise<{latestVersion: string, assets: any[]}>}
+ */
+async function fetchLatestVersion() {
 	try {
-		// Get current version
-		let currentVersion = "0.0.0";
-		
-		if (fs.existsSync(currentVersionPath)) {
-			currentVersion = fs.readFileSync(currentVersionPath).toString();
-			console.log( `Current version: ${currentVersion}` )
+		const options = {
+			hostname: "api.github.com",
+			path: "/repos/Icaruk/up-npm/releases/latest",
+			headers: {
+				"User-Agent": "Node.js",
+			},
+		};
+
+		return new Promise((resolve, reject) => {
+			const req = https.get(options, res => {
+				let body = "";
+				res.on("data", chunk => (body += chunk));
+				res.on("end", () => {
+					const json = JSON.parse(body);
+					
+					resolve({
+						latestVersion: json.tag_name,
+						assets: json.assets ?? []
+					});
+				});
+			});
+
+			req.on("error", err => reject(err));
+		});
+	} catch (err) {
+		console.error(err);
+		return null;
+	}
+}
+
+/**
+ * @returns {Promise<{isAvailableUpdate: boolean, latestVersion: string, assets: any[]}>}
+ */
+async function checkIsAvailableUpdate() {
+	
+	const currentVersion = getCurrentVersion();
+	console.log( `Current version: ${currentVersion}` );
+	
+	console.log( "Fetching latest version..." )
+	const {latestVersion, assets} = await fetchLatestVersion();
+	
+	if (!latestVersion) {
+		console.log( "No latest version found" );
+		return {
+			isAvailableUpdate: false,
+			latestVersion: null
+		};
+	}
+	console.log( "OK. Latest version found: ", latestVersion );
+	
+	
+	const semverCompareResult = compareSemver(latestVersion, currentVersion);
+	// 1 must upgrade
+	// 0 up to date
+	// -1 (impossible) local version is greater than remote one
+	
+	if (semverCompareResult === 0) {
+		return {
+			isAvailableUpdate: false,
+			latestVersion: null,
+			assets: [],
+		};
+	};
+	
+	return {
+		isAvailableUpdate: true,
+		latestVersion: latestVersion,
+		assets: assets
+	}
+}
+
+/**
+ * @param {string} url The URL of the binary file to download.
+ * @returns {Promise<Uint8Array | null>} A promise that resolves with the binary file data as a Uint8Array.
+*/
+async function downloadBinary(url) {
+	// https://github.com/Icaruk/up-npm/releases/download/3.1.0/up-npm-3.1.0-windows-amd64.exe
+	
+	const urlObj = new URL(url);
+	const hostname = urlObj.hostname;
+	const path = urlObj.pathname;
+	
+	try {
+		const options = {
+			hostname: hostname,
+			path: path,
+			headers: {
+				"User-Agent": "Node.js",
+			},
 		};
 		
-		console.log( "Fetching latest version..." )
-		const responseLatestVersion = await fetch("https://api.github.com/repos/Icaruk/up-npm/releases/latest");
-		const json = await responseLatestVersion.json();
+		let data = [];
+
+		return new Promise((resolve, reject) => {
+			const req = https.get(options, res => {
+				res.on("data", chunk => data.push(chunk));
+				res.on("end", () => {
+					const bufferView = new Uint8Array(Buffer.concat(data));
+					resolve(bufferView);
+				});
+			});
+
+			req.on("error", err => reject(err));
+		});
+	} catch (err) {
+		console.error(err);
+		return null;
+	}
+}
+
+async function init() {
+	try {
 		
-		const latestVersion = json.tag_name;
-		console.log( "OK. Latest version found: ", latestVersion );
+		const {isAvailableUpdate, latestVersion, assets} = await checkIsAvailableUpdate();
 		
 		
-		const semverCompareResult = compareSemver(latestVersion, currentVersion);
-		// 1 must upgrade
-		// 0 up to date
-		// -1 (impossible) local version is greater than remote one
-		
-		if (semverCompareResult === 0) {
+		if (!isAvailableUpdate) {
 			console.log( "You are already up-to-date!" );
 			process.exit(1);
 		};
@@ -93,8 +203,6 @@ async function downloadBinary() {
 			localBinaryName += ".exe";
 		};
 		
-		const assets = json.assets ?? [];
-		
 		// https://regex101.com/r/rfH9Fe/1
 		const regex = new RegExp(`(${platformName}-${archName})(\.exe)?$`, "gi")
 		const foundAsset = assets.find( _asset => regex.test(_asset.name) );
@@ -108,13 +216,10 @@ async function downloadBinary() {
 		const sizeMB = +(size / (1024 * 1024)).toFixed(2);
 		console.log( `Found binary '${remoteBinaryName}' (${sizeMB} MB)` );
 		
-		console.log( `Downloading ${remoteBinaryName}...` );
+		console.log( `Downloading '${remoteBinaryName}'...` );
 		const downloadUrl = foundAsset.browser_download_url;
-		const responseDownload = await fetch(downloadUrl);
-		console.log( "OK" )
-		
-		const data = await responseDownload.arrayBuffer();
-		const bufferView = new Uint8Array(data);
+		const bufferView = await downloadBinary(downloadUrl);
+		console.log( "OK" );
 		
 		// Delete all contents of folder or create if it doesn't exists
 		if (fs.existsSync(binPath)) {
@@ -140,4 +245,4 @@ async function downloadBinary() {
 };
 
 
-downloadBinary();
+init();

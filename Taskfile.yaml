@@ -5,7 +5,7 @@ version: '3'
 vars:
   DIST_FOLDER: "dist"
   APPNAME: "up-npm"
-  VERSION: 3.1.0
+  VERSION: 3.2.0
     # sh: '{{if eq OS "windows"}}more .version{{else}}cat .version{{end}}'
 
 tasks:
