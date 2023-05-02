@@ -127,7 +127,7 @@ async function checkIsAvailableUpdate() {
  * @param {string} url The URL of the binary file to download.
  * @returns {Promise<Uint8Array | null>} A promise that resolves with the binary file data as a Uint8Array.
 */
-async function downloadBinary(url) {
+async function downloadBinary(url, fileName) {
 	// https://github.com/Icaruk/up-npm/releases/download/3.1.0/up-npm-3.1.0-windows-amd64.exe
 	
 	const urlObj = new URL(url);
@@ -143,19 +143,36 @@ async function downloadBinary(url) {
 			},
 		};
 		
-		let data = [];
 
 		return new Promise((resolve, reject) => {
-			const req = https.get(options, res => {
-				res.on("data", chunk => data.push(chunk));
-				res.on("end", () => {
-					const bufferView = new Uint8Array(Buffer.concat(data));
-					resolve(bufferView);
-				});
-			});
 
-			req.on("error", err => reject(err));
+			https.get(url, response => {
+				if (response.statusCode === 302) {
+					downloadBinary(response.headers.location, fileName);
+				}
+
+				const fileStream = fs.createWriteStream(fileName);
+    
+				fileStream.on('error', (error) => {
+					console.error(`Error saving the file: ${error.message}`);
+					fs.unlink(fileName, () => {});
+				});
+				
+				response.pipe(fileStream);
+				
+				fileStream.on('finish', () => {
+					fileStream.close();
+					resolve(true);
+				});
+				
+			})
+			.on("error", error => {
+				console.error(`Error downloading file: ${error.message}`);
+				reject(error);
+			});
 		});
+		
+		
 	} catch (err) {
 		console.error(err);
 		return null;
@@ -216,10 +233,7 @@ async function init() {
 		const sizeMB = +(size / (1024 * 1024)).toFixed(2);
 		console.log( `Found binary '${remoteBinaryName}' (${sizeMB} MB)` );
 		
-		console.log( `Downloading '${remoteBinaryName}'...` );
-		const downloadUrl = foundAsset.browser_download_url;
-		const bufferView = await downloadBinary(downloadUrl);
-		console.log( "OK" );
+		const destination = path.join(binPath, localBinaryName);
 		
 		// Delete all contents of folder or create if it doesn't exists
 		if (fs.existsSync(binPath)) {
@@ -230,7 +244,12 @@ async function init() {
 			fs.mkdirSync(binPath);
 		}
 		
-		fs.writeFileSync(path.join(binPath, localBinaryName), bufferView);
+		// Download file
+		console.log( `Downloading '${remoteBinaryName}'...` );
+		const downloadUrl = foundAsset.browser_download_url;
+		const bufferView = await downloadBinary(downloadUrl, destination);
+		console.log( "OK" );
+		
 		
 		if (!isWindows) {
 			// "chmod +rwx up-npm"
