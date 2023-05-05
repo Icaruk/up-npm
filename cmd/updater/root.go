@@ -55,12 +55,13 @@ var whereCmd = &cobra.Command{
 	Use:   "where",
 	Short: "Prints where up-npm is installed",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		// Get current location
-		wd, err := os.Getwd()
+		// Get bin location
+		binPath, err := os.Executable()
 		if err != nil {
 			return err
 		}
-		fmt.Println(wd)
+
+		fmt.Println(filepath.Dir(binPath))
 
 		return nil
 	},
