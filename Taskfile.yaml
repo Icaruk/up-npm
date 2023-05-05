@@ -5,9 +5,11 @@ version: '3'
 vars:
   DIST_FOLDER: "dist"
   APPNAME: "up-npm"
-  VERSION: 3.1.2
+  VERSION:
+    # 3.1.2
     # sh: '{{if eq OS "windows"}}more .version{{else}}cat .version{{end}}'
-
+    sh: 'Powershell.exe -File getPackageVersion.ps1'
+    
 tasks:
   build:
     cmds:

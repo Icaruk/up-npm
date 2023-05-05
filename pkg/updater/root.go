@@ -634,6 +634,8 @@ func Init(cfg CmdFlags) {
 
 		for {
 
+			freezeProgressCount := false
+
 			response, err := promptUpdateDependency(
 				updatePackageOptions,
 				key,
@@ -643,7 +645,10 @@ func Init(cfg CmdFlags) {
 				updateProgressCount,
 				totalCount,
 			)
-			updateProgressCount++
+
+			if !freezeProgressCount {
+				updateProgressCount++
+			}
 
 			if err != nil {
 				if err == terminal.InterruptErr {
@@ -652,10 +657,13 @@ func Init(cfg CmdFlags) {
 			}
 
 			if response == updatePackageOptions.skip {
+				freezeProgressCount = true
 				break
 			}
 
 			if response == updatePackageOptions.show_changes {
+				freezeProgressCount = true
+
 				// Open browser url
 				var url string
 

@@ -17,8 +17,8 @@ var Cfg = updater.CmdFlags{
 
 var rootCmd = &cobra.Command{
 	Use:   "up-npm",
-	Short: "Updates npm depeendencies",
-	Long:  `up-npm is a easy way to keep your npm depeendencies up to date.`,
+	Short: "Updates npm dependencies",
+	Long:  `up-npm is a easy way to keep your npm dependencies up to date.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 
 		devFlag, err := cmd.Flags().GetBool("dev")
@@ -51,10 +51,27 @@ var rootCmd = &cobra.Command{
 	},
 }
 
+var whereCmd = &cobra.Command{
+	Use:   "where",
+	Short: "Prints where up-npm is installed",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		// Get current location
+		wd, err := os.Getwd()
+		if err != nil {
+			return err
+		}
+		fmt.Println(wd)
+
+		return nil
+	},
+}
+
 func init() {
 	rootCmd.Flags().BoolVarP(&Cfg.Dev, "dev", "d", false, "Include dev dependencies")
 	rootCmd.Flags().StringVarP(&Cfg.Filter, "filter", "f", "", "Filter dependencies by package name")
 	rootCmd.Flags().BoolVar(&Cfg.AllowDowngrade, "allow-downgrade", false, "Allows downgrading a if latest version is older than current")
+
+	rootCmd.AddCommand(whereCmd)
 
 	binaryPath, err := os.Executable()
 	if err != nil {

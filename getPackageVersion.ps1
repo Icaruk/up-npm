@@ -1,0 +1,1 @@
+(Get-Content package.json) | ConvertFrom-Json | Select-Object -ExpandProperty "version"
