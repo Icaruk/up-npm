@@ -634,8 +634,6 @@ func Init(cfg CmdFlags) {
 
 		for {
 
-			freezeProgressCount := false
-
 			response, err := promptUpdateDependency(
 				updatePackageOptions,
 				key,
@@ -646,10 +644,6 @@ func Init(cfg CmdFlags) {
 				totalCount,
 			)
 
-			if !freezeProgressCount {
-				updateProgressCount++
-			}
-
 			if err != nil {
 				if err == terminal.InterruptErr {
 					log.Fatal("interrupted")
@@ -657,12 +651,17 @@ func Init(cfg CmdFlags) {
 			}
 
 			if response == updatePackageOptions.skip {
-				freezeProgressCount = true
+				updateProgressCount++
+				break
+			}
+
+			if response == updatePackageOptions.finish {
+				fmt.Println("Finished update process")
+				exit = true
 				break
 			}
 
 			if response == updatePackageOptions.show_changes {
-				freezeProgressCount = true
 
 				// Open browser url
 				var url string
@@ -675,7 +674,6 @@ func Init(cfg CmdFlags) {
 
 				if url == "" {
 					fmt.Println(aurora.Yellow("No repository or homepage URL found"))
-					break
 				}
 
 				fmt.Println("Opening...")
@@ -690,14 +688,10 @@ func Init(cfg CmdFlags) {
 					entry.shouldUpdate = true      // then modify the copy
 					versionComparison[key] = entry // then reassign map entry
 				}
+				updateProgressCount++
 				break
 			}
 
-			if response == updatePackageOptions.finish {
-				fmt.Println("Finished update process")
-				exit = true
-				break
-			}
 		}
 
 		if exit {
