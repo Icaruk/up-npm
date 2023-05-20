@@ -172,8 +172,6 @@ func countVersionTypes(
 ) {
 	for _, value := range versionComparison {
 
-		fmt.Println(value)
-
 		switch value.versionType {
 		case "major":
 			majorCount++
