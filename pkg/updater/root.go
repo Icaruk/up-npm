@@ -683,8 +683,8 @@ func Init(cfg CmdFlags) {
 			if response == updatePackageOptions.update {
 				// get a copy of the entry
 				if entry, ok := versionComparison[key]; ok {
-					entry.shouldUpdate = true      // then modify the copy
-					versionComparison[key] = entry // then reassign map entry
+					entry.shouldUpdate = true      // modify the copy
+					versionComparison[key] = entry // reassign map entry
 				}
 				updateProgressCount++
 				break
@@ -758,7 +758,10 @@ func Init(cfg CmdFlags) {
 				dependenciesKeyName = "devDependencies"
 			}
 
-			dotPath := fmt.Sprintf("%s.%s", dependenciesKeyName, key)
+			// replace "key" characters like "." and replace with "\."
+			safeKey := strings.ReplaceAll(key, ".", "\\.")
+
+			dotPath := fmt.Sprintf("%s.%s", dependenciesKeyName, safeKey)
 			latestVersion := fmt.Sprintf("%s%s", value.versionPrefix, value.latest)
 
 			jsonFileStr, _ = sjson.Set(jsonFileStr, dotPath, latestVersion)
