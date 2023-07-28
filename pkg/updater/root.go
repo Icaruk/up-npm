@@ -213,7 +213,7 @@ func promptUpdateDependency(
 	response := ""
 	prompt := &survey.Select{
 		Message: fmt.Sprintf(
-			"%s Update %s from %s to %s?",
+			"%s Update '%s' from %s to %s?",
 			printUpdateProgress(updateProgressCount, maxUpdateProgress),
 			dependency,
 			currentVersion,
