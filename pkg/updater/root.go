@@ -559,9 +559,17 @@ func Init(cfg CmdFlags) {
 		return
 	}
 
+	// Initialize empty
+	dependencies := make(map[string]string)
+	devDependencies := make(map[string]string)
+
 	// Get dependencies
-	dependencies := packageJsonMap.Dependencies
-	devDependencies := packageJsonMap.DevDependencies
+	if packageJsonMap.Dependencies != nil {
+		dependencies = packageJsonMap.Dependencies
+	}
+	if packageJsonMap.DevDependencies != nil {
+		devDependencies = packageJsonMap.DevDependencies
+	}
 
 	if dependencies == nil && devDependencies == nil {
 		fmt.Println(aurora.Red("No dependencies found on package.json"))
@@ -571,12 +579,8 @@ func Init(cfg CmdFlags) {
 
 	if cfg.Dev {
 		// Merge devDependencies with dependencies
-		if dependencies == nil {
-			dependencies = devDependencies
-		} else {
-			for key, value := range devDependencies {
-				dependencies[key] = value
-			}
+		for key, value := range devDependencies {
+			dependencies[key] = value
 		}
 	}
 
