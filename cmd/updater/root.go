@@ -81,7 +81,7 @@ func init() {
 
 	localVersionPath := filepath.Join(filepath.Dir(binaryPath), "../.version")
 
-	localVersion := "3.1.4"
+	localVersion := "3.1.5"
 	localVersionByte, err := os.ReadFile(localVersionPath)
 	if err == nil {
 		localVersion = string(localVersionByte)

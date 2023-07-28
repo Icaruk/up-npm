@@ -209,16 +209,16 @@ func promptUpdateDependency(
 	updateProgressCount int,
 	maxUpdateProgress int,
 ) (string, error) {
+
 	response := ""
 	prompt := &survey.Select{
 		Message: fmt.Sprintf(
-			"%s Update \"%s\" from %s to %s?",
+			"%s Update %s from %s to %s?",
 			printUpdateProgress(updateProgressCount, maxUpdateProgress),
 			dependency,
 			currentVersion,
 			colorizeVersion(latestVersion, versionType),
 		),
-		Help: "Use arrow keys to navigate",
 		Options: []string{
 			options.update,
 			options.skip,
@@ -550,6 +550,7 @@ func Init(cfg CmdFlags) {
 
 	// Parse json file
 	var packageJsonMap PackageJSON
+
 	err = json.Unmarshal(jsonFile, &packageJsonMap)
 	if err != nil {
 		fmt.Println(aurora.Red("Error reading package.json"), "invalid JSON or corrupt file. Error:")
@@ -562,10 +563,20 @@ func Init(cfg CmdFlags) {
 	dependencies := packageJsonMap.Dependencies
 	devDependencies := packageJsonMap.DevDependencies
 
+	if dependencies == nil && devDependencies == nil {
+		fmt.Println(aurora.Red("No dependencies found on package.json"))
+		fmt.Println()
+		return
+	}
+
 	if cfg.Dev {
 		// Merge devDependencies with dependencies
-		for key, value := range devDependencies {
-			dependencies[key] = value
+		if dependencies == nil {
+			dependencies = devDependencies
+		} else {
+			for key, value := range devDependencies {
+				dependencies[key] = value
+			}
 		}
 	}
 
