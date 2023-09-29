@@ -4,6 +4,8 @@ CLI tool written in Go to review and update your NPM dependencies, easy and fast
 
 ![](https://i.imgur.com/8AUJFVb.png)
 
+[![built with Codeium](https://codeium.com/badges/main)](https://codeium.com)
+
 # Features
 
 - 🔍 **Easily identify the update type** for each package, whether it's a patch, minor, or major update.
