@@ -210,13 +210,21 @@ func promptUpdateDependency(
 	versionType string,
 	updateProgressCount int,
 	maxUpdateProgress int,
+	isDevDependency bool,
 ) (string, error) {
+
+	isDevDependencyText := ""
+	if isDevDependency {
+		isDevDependencyText = "(devDependency)"
+	}
+
 	response := ""
 	prompt := &survey.Select{
 		Message: fmt.Sprintf(
-			"%s Update \"%s\" from %s to %s?",
+			"%s Update \"%s\" %s from %s to %s?",
 			printUpdateProgress(updateProgressCount, maxUpdateProgress),
 			dependency,
+			isDevDependencyText,
 			currentVersion,
 			colorizeVersion(latestVersion, versionType),
 		),
@@ -641,6 +649,7 @@ func Init(cfg CmdFlags) {
 				value.versionType,
 				updateProgressCount,
 				totalCount,
+				value.isDev,
 			)
 			updateProgressCount++
 
