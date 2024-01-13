@@ -11,9 +11,27 @@ import (
 )
 
 var Cfg = npm.CmdFlags{
-	Dev:            false,
+	NoDev:          false,
 	AllowDowngrade: false,
 	Filter:         "",
+}
+
+type Flag struct {
+	Long  string
+	Short string
+}
+
+var AllowedFlags = map[string]Flag{
+	"noDev": {
+		Long: "no-dev",
+	},
+	"filter": {
+		Long:  "filter",
+		Short: "f",
+	},
+	"allowDowngrade": {
+		Long: "allow-downgrade",
+	},
 }
 
 var rootCmd = &cobra.Command{
@@ -22,29 +40,29 @@ var rootCmd = &cobra.Command{
 	Long:  `up-npm is a easy way to keep your npm depeendencies up to date.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 
-		devFlag, err := cmd.Flags().GetBool("dev")
+		noDevFlag, err := cmd.Flags().GetBool(AllowedFlags["noDev"].Long)
 		if err != nil {
 			return err
 		}
 
-		allowDowngradeFlag, err := cmd.Flags().GetBool("dev")
+		filterFlag, err := cmd.Flags().GetString(AllowedFlags["filter"].Long)
 		if err != nil {
 			return err
 		}
 
-		filterFlag, err := cmd.Flags().GetString("filter")
+		allowDowngradeFlag, err := cmd.Flags().GetBool(AllowedFlags["allowDowngrade"].Long)
 		if err != nil {
 			return err
 		}
 
 		Cfg = npm.CmdFlags{
-			Dev:            devFlag,
-			AllowDowngrade: allowDowngradeFlag,
+			NoDev:          noDevFlag,
 			Filter:         filterFlag,
+			AllowDowngrade: allowDowngradeFlag,
 		}
 
-		Cfg.Dev = devFlag
-		Cfg.AllowDowngrade = devFlag
+		// Cfg.NoDev = noDevFlag
+		// Cfg.AllowDowngrade = noDevFlag
 
 		updater.Init(Cfg)
 
@@ -53,9 +71,23 @@ var rootCmd = &cobra.Command{
 }
 
 func init() {
-	rootCmd.Flags().BoolVar(&Cfg.Dev, "no-dev", false, "Include dev dependencies")
-	rootCmd.Flags().StringVarP(&Cfg.Filter, "filter", "f", "", "Filter dependencies by package name")
-	rootCmd.Flags().BoolVar(&Cfg.AllowDowngrade, "allow-downgrade", false, "Allows downgrading a if latest version is older than current")
+	rootCmd.Flags().BoolVar(
+		&Cfg.NoDev,
+		AllowedFlags["noDev"].Long,
+		false,
+		"Exclude dev dependencies",
+	)
+	rootCmd.Flags().StringVarP(&Cfg.Filter,
+		AllowedFlags["filter"].Long,
+		AllowedFlags["filter"].Short,
+		"",
+		"Filter dependencies by package name",
+	)
+	rootCmd.Flags().BoolVar(&Cfg.AllowDowngrade,
+		AllowedFlags["allowDowngrade"].Long,
+		false,
+		"Allows downgrading a if latest version is older than current",
+	)
 
 	binaryPath, err := os.Executable()
 	if err != nil {

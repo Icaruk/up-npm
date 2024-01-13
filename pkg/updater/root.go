@@ -36,6 +36,17 @@ type PackageJSON struct {
 	DevDependencies map[string]string `json:"devDependencies"`
 }
 
+type VersionComparisonItem struct {
+	current       string
+	latest        string
+	versionType   version.UpgradeType
+	shouldUpdate  bool
+	homepage      string
+	repositoryUrl string
+	versionPrefix string
+	isDev         bool
+}
+
 type NpmRegistryPackage struct {
 	ID       string `json:"_id"`
 	Rev      string `json:"_rev"`
@@ -77,7 +88,7 @@ func printUpdateProgress(current int, max int) string {
 	)
 }
 
-func printUpdatablePackagesTable(versionComparison map[string]npm.VersionComparisonItem) {
+func printUpdatablePackagesTable(versionComparison map[string]VersionComparisonItem) {
 	t := table.NewWriter()
 	t.SetOutputMirror(os.Stdout)
 	t.AppendHeader(table.Row{"Package", "Current", "Latest"})
@@ -145,7 +156,7 @@ func getVersionComponents(semver string) (int, int, int) {
 }
 
 func countVersionTypes(
-	versionComparison map[string]npm.VersionComparisonItem,
+	versionComparison map[string]VersionComparisonItem,
 ) (
 	majorCount int, minorCount int, patchCount int, totalCount int,
 ) {
@@ -154,11 +165,11 @@ func countVersionTypes(
 		fmt.Println(value)
 
 		switch value.versionType {
-		case "major":
+		case version.Major:
 			majorCount++
-		case "minor":
+		case version.Minor:
 			minorCount++
-		case "patch":
+		case version.Patch:
 			patchCount++
 		}
 
@@ -312,7 +323,7 @@ const concurrencyLimit int = 10
 
 func readDependencies(
 	dependencyList map[string]string,
-	targetMap map[string]npm.VersionComparisonItem,
+	targetMap map[string]VersionComparisonItem,
 	isDev bool,
 	bar *progressbar.ProgressBar,
 	filter string,
@@ -396,7 +407,7 @@ func readDependencies(
 
 			// Save data
 			if upgradeDirection == version.Upgrade {
-				targetMap[dependency] = npm.VersionComparisonItem{
+				targetMap[dependency] = VersionComparisonItem{
 					current:       cleanCurrentVersion,
 					latest:        latestVersion,
 					versionType:   upgradeType,
@@ -430,7 +441,7 @@ func Init(cfg npm.CmdFlags) {
 
 	fmt.Println()
 
-	dependencies, devDependencies, jsonFile, err := packagejson.GetDependenciesFromPackageJson("package.json", cfg.Dev)
+	dependencies, devDependencies, jsonFile, err := packagejson.GetDependenciesFromPackageJson("package.json", cfg.NoDev)
 
 	if err != nil {
 		fmt.Println(err)
@@ -438,7 +449,7 @@ func Init(cfg npm.CmdFlags) {
 		return
 	}
 
-	versionComparison := map[string]npm.VersionComparisonItem{}
+	versionComparison := map[string]VersionComparisonItem{}
 
 	// Progress bar
 	maxBar := len(dependencies)
@@ -448,7 +459,7 @@ func Init(cfg npm.CmdFlags) {
 	dependencyCount := len(dependencies)
 	readDependencies(dependencies, versionComparison, false, bar, cfg.Filter)
 
-	if cfg.Dev {
+	if cfg.NoDev == false {
 		dependencyCount += len(devDependencies)
 		readDependencies(devDependencies, versionComparison, true, bar, cfg.Filter)
 	}

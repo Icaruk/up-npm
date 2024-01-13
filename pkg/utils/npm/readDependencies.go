@@ -13,7 +13,7 @@ import (
 )
 
 type CmdFlags struct {
-	Dev            bool
+	NoDev          bool
 	AllowDowngrade bool
 	Filter         string
 }
