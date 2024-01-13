@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"net/http"
 	"os"
 	"os/exec"
 	"regexp"
@@ -14,19 +13,20 @@ import (
 	"sync"
 	"time"
 
+	npm "github.com/icaruk/up-npm/pkg/utils/npm"
+	packagejson "github.com/icaruk/up-npm/pkg/utils/packagejson"
+	repositorypkg "github.com/icaruk/up-npm/pkg/utils/repository"
+	"github.com/icaruk/up-npm/pkg/utils/version"
+	versionpkg "github.com/icaruk/up-npm/pkg/utils/version"
+
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/AlecAivazis/survey/v2/terminal"
 	"github.com/jedib0t/go-pretty/v6/table"
+	"github.com/jedib0t/go-pretty/v6/text"
 	"github.com/logrusorgru/aurora/v4"
 	"github.com/schollz/progressbar/v3"
 	"github.com/tidwall/sjson"
 )
-
-type CmdFlags struct {
-	Dev            bool
-	AllowDowngrade bool
-	Filter         string
-}
 
 type PackageJSON struct {
 	Name            string            `json:"name"`
@@ -53,27 +53,16 @@ type NpmRegistryPackage struct {
 	} `json:"repository"`
 }
 
-type VersionComparisonItem struct {
-	current       string
-	latest        string
-	versionType   string
-	shouldUpdate  bool
-	homepage      string
-	repositoryUrl string
-	versionPrefix string
-	isDev         bool
-}
-
-func colorizeVersion(version string, versionType string) string {
+func colorizeVersion(version string, versionType versionpkg.UpgradeType) string {
 	vLatestMajor, vLatestMinor, vLatestPatch := getVersionComponents(version)
 
 	var colorizedVersion string
 
-	if versionType == "major" {
+	if versionType == versionpkg.Major {
 		colorizedVersion = aurora.Sprintf(aurora.Red("%d.%d.%d"), aurora.Red(vLatestMajor), aurora.Red(vLatestMinor), aurora.Red(vLatestPatch))
-	} else if versionType == "minor" {
+	} else if versionType == versionpkg.Minor {
 		colorizedVersion = aurora.Sprintf(aurora.White("%d.%d.%d"), aurora.White(vLatestMajor), aurora.Yellow(vLatestMinor), aurora.Yellow(vLatestPatch))
-	} else if versionType == "patch" {
+	} else if versionType == versionpkg.Patch {
 		colorizedVersion = aurora.Sprintf(aurora.White("%d.%d.%d"), aurora.White(vLatestMajor), aurora.White(vLatestMinor), aurora.Green(vLatestPatch))
 	}
 
@@ -88,16 +77,15 @@ func printUpdateProgress(current int, max int) string {
 	)
 }
 
-func printUpdatablePackagesTable(versionComparison map[string]VersionComparisonItem) {
+func printUpdatablePackagesTable(versionComparison map[string]npm.VersionComparisonItem) {
 	t := table.NewWriter()
 	t.SetOutputMirror(os.Stdout)
 	t.AppendHeader(table.Row{"Package", "Current", "Latest"})
-	// t.AppendFooter(table.Row{"", "Total", "1234"})
 
 	// Add rows
 	for key, value := range versionComparison {
 		latestColorized := colorizeVersion(value.latest, value.versionType)
-		t.AppendRow(table.Row{key, value.current, latestColorized})
+		t.AppendRow(table.Row{key, value.current, latestColorized}, table.RowConfig{AutoMergeAlign: text.AlignRight})
 	}
 
 	t.Render()
@@ -156,17 +144,8 @@ func getVersionComponents(semver string) (int, int, int) {
 	return vCurrentMajor, vCurrentMinor, vCurrentPatch
 }
 
-func fetchNpmRegistry(dependency string) (*http.Response, error) {
-	resp, err := http.Get(fmt.Sprintf("https://registry.npmjs.org/%s", dependency))
-	if err != nil {
-		fmt.Println(err)
-	}
-
-	return resp, err
-}
-
 func countVersionTypes(
-	versionComparison map[string]VersionComparisonItem,
+	versionComparison map[string]npm.VersionComparisonItem,
 ) (
 	majorCount int, minorCount int, patchCount int, totalCount int,
 ) {
@@ -204,10 +183,10 @@ type writeJsonOptions struct {
 
 func promptUpdateDependency(
 	options updatePackageOptions,
-	dependency,
-	currentVersion,
-	latestVersion,
-	versionType string,
+	dependency string,
+	currentVersion string,
+	latestVersion string,
+	versionType version.UpgradeType,
 	updateProgressCount int,
 	maxUpdateProgress int,
 	isDevDependency bool,
@@ -271,61 +250,6 @@ const (
 	UpgradeDirectionDowngrade UpgradeDirection = "downgrade"
 )
 
-func getVersionUpdateType(currentVersion, latestVersion string) (upgradeType string, upgradeDirection string) {
-
-	if latestVersion == currentVersion {
-		return "none", "none"
-	}
-
-	currentArr := strings.Split(currentVersion, ".") // 1.0.0
-	latestArr := strings.Split(latestVersion, ".")   // 0.9.9
-
-	versionChange := []int{0, 0, 0}
-
-	for i := 0; i < len(currentArr); i++ {
-		vCur, _ := strconv.Atoi(currentArr[i])
-		vLat, _ := strconv.Atoi(latestArr[i])
-
-		// 0 = major
-		// 1 = minor
-		// 2 = patch
-
-		var changeDirection int
-
-		if vLat > vCur {
-			changeDirection = 1
-		} else if vLat < vCur {
-			changeDirection = -1
-		}
-
-		versionChange[i] = changeDirection
-
-	}
-
-	for i, change := range versionChange {
-		if change == -1 {
-			if i == 0 {
-				return "major", "downgrade"
-			} else if i == 1 {
-				return "minor", "downgrade"
-			} else {
-				return "patch", "downgrade"
-			}
-		}
-		if change == 1 {
-			if i == 0 {
-				return "major", "upgrade"
-			} else if i == 1 {
-				return "minor", "upgrade"
-			} else {
-				return "patch", "upgrade"
-			}
-		}
-	}
-
-	return "none", "none"
-}
-
 func initProgressBar(maxBar int) *progressbar.ProgressBar {
 	return progressbar.NewOptions(maxBar,
 		progressbar.OptionEnableColorCodes(true),
@@ -384,54 +308,11 @@ func Openbrowser(url string) {
 
 }
 
-func getCleanVersion(version string) (string, string) {
-	re := regexp.MustCompile(`([^0-9]*)(\d+\.\d+\.\d+)(.*)`)
-	reSubmatch := re.FindStringSubmatch(version)
-
-	prefix := reSubmatch[1]
-	cleanVersion := reSubmatch[2]
-
-	return prefix, cleanVersion
-}
-
-func getRepositoryUrl(url string) string {
-	// https://regex101.com/r/AEVsGf/2
-	re := regexp.MustCompile(`(git[+@])?(.*)`)
-	matches := re.FindStringSubmatch(url)
-
-	if matches == nil {
-		return ""
-	}
-
-	repoUrl := matches[2]
-	repoUrl = strings.TrimSuffix(repoUrl, ".git")
-
-	// https://regex101.com/r/iGLlG8/1
-	re = regexp.MustCompile(`((ssh:\/\/git@)?(git:\/\/)?)(.*)`)
-	matches = re.FindStringSubmatch(repoUrl)
-
-	if matches == nil {
-		return ""
-	}
-
-	repoUrl = matches[4]
-
-	// Replace ":" with "/"
-	repoUrl = strings.Replace(repoUrl, ".com:", ".com/", -1)
-
-	// Append "https://" if missing
-	if !strings.HasPrefix(repoUrl, "https://") {
-		repoUrl = "https://" + repoUrl
-	}
-
-	return repoUrl
-}
-
 const concurrencyLimit int = 10
 
 func readDependencies(
 	dependencyList map[string]string,
-	targetMap map[string]VersionComparisonItem,
+	targetMap map[string]npm.VersionComparisonItem,
 	isDev bool,
 	bar *progressbar.ProgressBar,
 	filter string,
@@ -456,7 +337,7 @@ func readDependencies(
 		}
 
 		// Get version and prefix
-		versionPrefix, cleanCurrentVersion := getCleanVersion(currentVersion)
+		versionPrefix, cleanCurrentVersion := version.GetCleanVersion(currentVersion)
 
 		if cleanCurrentVersion == "" {
 			fmt.Println(packageName, " has unsupported/invalid version, skipping...")
@@ -473,7 +354,7 @@ func readDependencies(
 			semaphoreChan <- struct{}{}
 
 			// Perform get request to npm registry
-			resp, err := fetchNpmRegistry(dependency)
+			resp, err := npm.FetchNpmRegistry(dependency)
 			if err != nil {
 				fmt.Println("Failed to fetch", dependency, " from npm registry, skipping...")
 				resultsChan <- "" // Enviar un resultado vacío para que se tenga en cuenta en la cuenta de resultados
@@ -499,7 +380,7 @@ func readDependencies(
 
 			var repositoryUrl string
 			if repository["url"] != nil {
-				repositoryUrl = getRepositoryUrl(repository["url"].(string))
+				repositoryUrl = repositorypkg.GetRepositoryUrl(repository["url"].(string))
 			}
 
 			// Get latest version from distTags
@@ -511,11 +392,11 @@ func readDependencies(
 			}
 
 			// Get version update type (major, minor, patch, none)
-			upgradeType, upgradeDirection := getVersionUpdateType(cleanCurrentVersion, latestVersion)
+			upgradeType, upgradeDirection := version.GetVersionUpdateType(cleanCurrentVersion, latestVersion)
 
 			// Save data
-			if upgradeDirection == "upgrade" {
-				targetMap[dependency] = VersionComparisonItem{
+			if upgradeDirection == version.Upgrade {
+				targetMap[dependency] = npm.VersionComparisonItem{
 					current:       cleanCurrentVersion,
 					latest:        latestVersion,
 					versionType:   upgradeType,
@@ -543,42 +424,21 @@ func readDependencies(
 
 }
 
-func Init(cfg CmdFlags) {
+func Init(cfg npm.CmdFlags) {
 
 	var isFilterFilled bool = cfg.Filter != ""
 
 	fmt.Println()
 
-	// Read json file
-	jsonFile, err := os.ReadFile("package.json")
-	if err != nil {
-		fmt.Println(aurora.Red("No package.json found."), "Please run this command from the root of the project.")
-		fmt.Println()
-		return
-	}
+	dependencies, devDependencies, jsonFile, err := packagejson.GetDependenciesFromPackageJson("package.json", cfg.Dev)
 
-	// Parse json file
-	var packageJsonMap PackageJSON
-	err = json.Unmarshal(jsonFile, &packageJsonMap)
 	if err != nil {
-		fmt.Println(aurora.Red("Error reading package.json"), "invalid JSON or corrupt file. Error:")
 		fmt.Println(err)
 		fmt.Println()
 		return
 	}
 
-	// Get dependencies
-	dependencies := packageJsonMap.Dependencies
-	devDependencies := packageJsonMap.DevDependencies
-
-	if cfg.Dev {
-		// Merge devDependencies with dependencies
-		for key, value := range devDependencies {
-			dependencies[key] = value
-		}
-	}
-
-	versionComparison := map[string]VersionComparisonItem{}
+	versionComparison := map[string]npm.VersionComparisonItem{}
 
 	// Progress bar
 	maxBar := len(dependencies)

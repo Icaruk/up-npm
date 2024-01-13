@@ -1,4 +1,4 @@
-module github.com/icaruk/updatenpm
+module github.com/icaruk/up-npm
 
 go 1.20
 

@@ -5,11 +5,12 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/icaruk/updatenpm/pkg/updater"
+	"github.com/icaruk/up-npm/pkg/updater"
+	"github.com/icaruk/up-npm/pkg/utils/npm"
 	"github.com/spf13/cobra"
 )
 
-var Cfg = updater.CmdFlags{
+var Cfg = npm.CmdFlags{
 	Dev:            false,
 	AllowDowngrade: false,
 	Filter:         "",
@@ -36,7 +37,7 @@ var rootCmd = &cobra.Command{
 			return err
 		}
 
-		Cfg = updater.CmdFlags{
+		Cfg = npm.CmdFlags{
 			Dev:            devFlag,
 			AllowDowngrade: allowDowngradeFlag,
 			Filter:         filterFlag,
@@ -52,7 +53,7 @@ var rootCmd = &cobra.Command{
 }
 
 func init() {
-	rootCmd.Flags().BoolVarP(&Cfg.Dev, "dev", "d", false, "Include dev dependencies")
+	rootCmd.Flags().BoolVar(&Cfg.Dev, "no-dev", false, "Include dev dependencies")
 	rootCmd.Flags().StringVarP(&Cfg.Filter, "filter", "f", "", "Filter dependencies by package name")
 	rootCmd.Flags().BoolVar(&Cfg.AllowDowngrade, "allow-downgrade", false, "Allows downgrading a if latest version is older than current")
 
