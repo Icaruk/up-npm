@@ -34,7 +34,7 @@
 		"up-npm": "bin/up-npm"
 	},
 	"dependencies": {
-		"@aws-sdk/client-s3": "^3.293.0",
+		"@aws-sdk/client-s3": "3.293.0",
 		"@aws-sdk/lib-storage": "^3.293.0"
 	},
 	"devDependencies": {

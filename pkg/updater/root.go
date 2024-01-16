@@ -162,8 +162,6 @@ func countVersionTypes(
 ) {
 	for _, value := range versionComparison {
 
-		fmt.Println(value)
-
 		switch value.versionType {
 		case version.Major:
 			majorCount++
@@ -201,17 +199,20 @@ func promptUpdateDependency(
 	updateProgressCount int,
 	maxUpdateProgress int,
 	isDevDependency bool,
+	versionPrefix string,
 ) (string, error) {
 
 	isDevDependencyText := ""
 	if isDevDependency {
-		isDevDependencyText = "(devDependency)"
+		isDevDependencyText = aurora.Sprintf(
+			aurora.Magenta(" (devDependency)"),
+		)
 	}
 
 	response := ""
 	prompt := &survey.Select{
 		Message: fmt.Sprintf(
-			"%s Update \"%s\" %s from %s to %s?",
+			"%s Update \"%s\"%s from %s to %s?",
 			printUpdateProgress(updateProgressCount, maxUpdateProgress),
 			dependency,
 			isDevDependencyText,
@@ -441,7 +442,7 @@ func Init(cfg npm.CmdFlags) {
 
 	fmt.Println()
 
-	dependencies, devDependencies, jsonFile, err := packagejson.GetDependenciesFromPackageJson("package.json", cfg.NoDev)
+	dependencies, jsonFile, err := packagejson.GetDependenciesFromPackageJson("package.json", cfg.NoDev)
 
 	if err != nil {
 		fmt.Println(err)
@@ -458,11 +459,6 @@ func Init(cfg npm.CmdFlags) {
 	// Process dependencies
 	dependencyCount := len(dependencies)
 	readDependencies(dependencies, versionComparison, false, bar, cfg.Filter)
-
-	if cfg.NoDev == false {
-		dependencyCount += len(devDependencies)
-		readDependencies(devDependencies, versionComparison, true, bar, cfg.Filter)
-	}
 
 	// Count total dependencies and filtered dependencies
 	filteredDependencyCount := dependencyCount
@@ -512,6 +508,28 @@ func Init(cfg npm.CmdFlags) {
 
 		for {
 
+			if value.versionPrefix == "" {
+				isDevDependencyText := ""
+				if value.isDev {
+					isDevDependencyText = aurora.Sprintf(
+						aurora.Magenta(" (devDependency)"),
+					)
+				}
+
+				message := aurora.Sprintf(
+					aurora.Yellow("Upgrade ignored because package \"%s\"%s is locked to version %s"),
+					key,
+					isDevDependencyText,
+					value.current,
+				)
+
+				fmt.Println(message)
+
+				updateProgressCount++
+				break
+
+			}
+
 			response, err := promptUpdateDependency(
 				updatePackageOptions,
 				key,
@@ -521,6 +539,7 @@ func Init(cfg npm.CmdFlags) {
 				updateProgressCount,
 				totalCount,
 				value.isDev,
+				value.versionPrefix,
 			)
 			updateProgressCount++
 

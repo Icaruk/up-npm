@@ -16,7 +16,7 @@ type PackageJSON struct {
 	DevDependencies map[string]string `json:"devDependencies"`
 }
 
-func GetDependenciesFromPackageJson(packageJsonFilename string, getDevDependencies bool) (dependencies map[string]string, devDependencies map[string]string, jsonFile []byte, err error) {
+func GetDependenciesFromPackageJson(packageJsonFilename string, preventDevDependencies bool) (dependencies map[string]string, jsonFile []byte, err error) {
 	// Read json file
 	jsonFile, err = os.ReadFile(packageJsonFilename)
 	if err != nil {
@@ -24,7 +24,7 @@ func GetDependenciesFromPackageJson(packageJsonFilename string, getDevDependenci
 			aurora.Red("No package.json found."),
 			"Please run this command from the root of the project.",
 		)
-		return nil, nil, nil, errors.New(errStr)
+		return nil, nil, errors.New(errStr)
 	}
 
 	// Parse json file
@@ -37,12 +37,12 @@ func GetDependenciesFromPackageJson(packageJsonFilename string, getDevDependenci
 			"Invalid JSON or corrupt file. Error:",
 			err,
 		)
-		return nil, nil, nil, errors.New(errStr)
+		return nil, nil, errors.New(errStr)
 	}
 
 	// Initialize empty
 	dependencies = make(map[string]string)
-	devDependencies = make(map[string]string)
+	devDependencies := make(map[string]string)
 
 	// Get dependencies
 	if packageJsonMap.Dependencies != nil {
@@ -57,15 +57,15 @@ func GetDependenciesFromPackageJson(packageJsonFilename string, getDevDependenci
 			aurora.Red("No dependencies found on package.json"),
 		)
 
-		return nil, nil, nil, errors.New(errStr)
+		return nil, nil, errors.New(errStr)
 	}
 
-	if getDevDependencies {
+	if !preventDevDependencies {
 		// Merge devDependencies with dependencies
 		for key, value := range devDependencies {
 			dependencies[key] = value
 		}
 	}
 
-	return dependencies, devDependencies, jsonFile, nil
+	return dependencies, jsonFile, nil
 }
