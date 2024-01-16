@@ -14,6 +14,7 @@ var Cfg = npm.CmdFlags{
 	NoDev:          false,
 	AllowDowngrade: false,
 	Filter:         "",
+	File:           "",
 }
 
 type Flag struct {
@@ -31,6 +32,9 @@ var AllowedFlags = map[string]Flag{
 	},
 	"allowDowngrade": {
 		Long: "allow-downgrade",
+	},
+	"file": {
+		Long: "file",
 	},
 }
 
@@ -55,10 +59,16 @@ var rootCmd = &cobra.Command{
 			return err
 		}
 
+		file, err := cmd.Flags().GetString(AllowedFlags["file"].Long)
+		if err != nil {
+			return err
+		}
+
 		Cfg = npm.CmdFlags{
 			NoDev:          noDevFlag,
 			Filter:         filterFlag,
 			AllowDowngrade: allowDowngradeFlag,
+			File:           file,
 		}
 
 		// Cfg.NoDev = noDevFlag
@@ -77,16 +87,24 @@ func init() {
 		false,
 		"Exclude dev dependencies",
 	)
-	rootCmd.Flags().StringVarP(&Cfg.Filter,
+	rootCmd.Flags().StringVarP(
+		&Cfg.Filter,
 		AllowedFlags["filter"].Long,
 		AllowedFlags["filter"].Short,
 		"",
 		"Filter dependencies by package name",
 	)
-	rootCmd.Flags().BoolVar(&Cfg.AllowDowngrade,
+	rootCmd.Flags().BoolVar(
+		&Cfg.AllowDowngrade,
 		AllowedFlags["allowDowngrade"].Long,
 		false,
 		"Allows downgrading a if latest version is older than current",
+	)
+	rootCmd.Flags().StringVar(
+		&Cfg.File,
+		AllowedFlags["file"].Long,
+		"package.json",
+		"File dependencies by package name",
 	)
 
 	binaryPath, err := os.Executable()

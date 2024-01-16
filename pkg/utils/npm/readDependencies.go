@@ -16,6 +16,7 @@ type CmdFlags struct {
 	NoDev          bool
 	AllowDowngrade bool
 	Filter         string
+	File           string
 }
 
 type VersionComparisonItem struct {

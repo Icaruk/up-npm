@@ -3,7 +3,9 @@ package packagejson
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
+	"strings"
 
 	"github.com/logrusorgru/aurora/v4"
 )
@@ -17,13 +19,21 @@ type PackageJSON struct {
 }
 
 func GetDependenciesFromPackageJson(packageJsonFilename string, preventDevDependencies bool) (dependencies map[string]string, jsonFile []byte, err error) {
+
 	// Read json file
 	jsonFile, err = os.ReadFile(packageJsonFilename)
 	if err != nil {
-		errStr := aurora.Sprintf(
-			aurora.Red("No package.json found."),
-			"Please run this command from the root of the project.",
+
+		var b strings.Builder
+
+		fmt.Fprintf(
+			&b,
+			aurora.Red("File \"%s\" not found.").String(),
+			packageJsonFilename,
 		)
+
+		errStr := b.String()
+
 		return nil, nil, errors.New(errStr)
 	}
 
@@ -32,11 +42,19 @@ func GetDependenciesFromPackageJson(packageJsonFilename string, preventDevDepend
 
 	err = json.Unmarshal(jsonFile, &packageJsonMap)
 	if err != nil {
-		errStr := aurora.Sprintf(
-			aurora.Red("Error reading package.json"),
-			"Invalid JSON or corrupt file. Error:",
-			err,
+
+		var b strings.Builder
+
+		fmt.Fprintf(
+			&b,
+			aurora.Red("Error reading file \"%s\".\n").String(),
+			packageJsonFilename,
 		)
+		fmt.Fprintf(&b, "Invalid JSON or corrupt file.")
+		fmt.Fprintf(&b, "\nError: %s", err)
+
+		errStr := b.String()
+
 		return nil, nil, errors.New(errStr)
 	}
 
@@ -52,9 +70,10 @@ func GetDependenciesFromPackageJson(packageJsonFilename string, preventDevDepend
 		devDependencies = packageJsonMap.DevDependencies
 	}
 
-	if dependencies == nil && devDependencies == nil {
+	if len(dependencies) == 0 && len(devDependencies) == 0 {
 		errStr := aurora.Sprintf(
-			aurora.Red("No dependencies found on package.json"),
+			aurora.Red("No dependencies found on file \"%s\"."),
+			packageJsonFilename,
 		)
 
 		return nil, nil, errors.New(errStr)

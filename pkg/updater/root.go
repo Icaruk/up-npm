@@ -70,7 +70,12 @@ func colorizeVersion(version string, versionType versionpkg.UpgradeType) string 
 	var colorizedVersion string
 
 	if versionType == versionpkg.Major {
-		colorizedVersion = aurora.Sprintf(aurora.Red("%d.%d.%d"), aurora.Red(vLatestMajor), aurora.Red(vLatestMinor), aurora.Red(vLatestPatch))
+		colorizedVersion = aurora.Sprintf(
+			aurora.Red("%d.%d.%d"),
+			aurora.Red(vLatestMajor),
+			aurora.Red(vLatestMinor),
+			aurora.Red(vLatestPatch),
+		)
 	} else if versionType == versionpkg.Minor {
 		colorizedVersion = aurora.Sprintf(aurora.White("%d.%d.%d"), aurora.White(vLatestMajor), aurora.Yellow(vLatestMinor), aurora.Yellow(vLatestPatch))
 	} else if versionType == versionpkg.Patch {
@@ -442,7 +447,7 @@ func Init(cfg npm.CmdFlags) {
 
 	fmt.Println()
 
-	dependencies, jsonFile, err := packagejson.GetDependenciesFromPackageJson("package.json", cfg.NoDev)
+	dependencies, jsonFile, err := packagejson.GetDependenciesFromPackageJson(cfg.File, cfg.NoDev)
 
 	if err != nil {
 		fmt.Println(err)
