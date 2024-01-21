@@ -196,6 +196,7 @@ func promptUpdateDependency(
 			currentVersion,
 			colorizeVersion(latestVersion, versionType),
 		),
+		Help: "Use arrow keys to navigate",
 		Options: []string{
 			options.update,
 			options.skip,
@@ -224,7 +225,7 @@ func promptWriteJson(options writeJsonOptions, file string) (string, error) {
 }
 
 type UpgradeType string
-type UpgradeDirection int
+type UpgradeDirection string
 
 const (
 	UpgradeTypeNone  UpgradeType = "none"
@@ -233,9 +234,9 @@ const (
 	UpgradeTypePatch UpgradeType = "patch"
 )
 const (
-	UpgradeDirectionNone      UpgradeDirection = 0
-	UpgradeDirectionUpgrade   UpgradeDirection = 1
-	UpgradeDirectionDowngrade UpgradeDirection = -1
+	UpgradeDirectionNone      UpgradeDirection = "none"
+	UpgradeDirectionUpgrade   UpgradeDirection = "upgrade"
+	UpgradeDirectionDowngrade UpgradeDirection = "downgrade"
 )
 
 func initProgressBar(maxBar int) *progressbar.ProgressBar {
@@ -303,7 +304,7 @@ func readDependencies(
 	targetMap map[string]versionpkg.VersionComparisonItem,
 	isDev bool,
 	bar *progressbar.ProgressBar,
-	cfg npm.CmdFlags,
+	filter string,
 ) {
 
 	var wg sync.WaitGroup
@@ -318,8 +319,8 @@ func readDependencies(
 	for packageName, currentVersion := range dependencyList {
 
 		// Check filter
-		if cfg.Filter != "" {
-			if !strings.Contains(packageName, cfg.Filter) {
+		if filter != "" {
+			if !strings.Contains(packageName, filter) {
 				continue
 			}
 		}
@@ -414,10 +415,6 @@ func Init(cfg npm.CmdFlags) {
 		return
 	}
 
-	// Initialize empty
-	dependencies = make(map[string]string)
-	devDependencies = make(map[string]string)
-
 	versionComparison := map[string]versionpkg.VersionComparisonItem{}
 
 	// Progress bar
@@ -426,11 +423,11 @@ func Init(cfg npm.CmdFlags) {
 
 	// Process dependencies
 	dependencyCount := len(dependencies)
-	readDependencies(dependencies, versionComparison, false, bar, cfg)
+	readDependencies(dependencies, versionComparison, false, bar, cfg.Filter)
 
 	// Process devDependencies
 	if !cfg.NoDev {
-		readDependencies(devDependencies, versionComparison, true, bar, cfg)
+		readDependencies(devDependencies, versionComparison, true, bar, cfg.Filter)
 	}
 
 	// Count total dependencies and filtered dependencies
@@ -514,6 +511,7 @@ func Init(cfg npm.CmdFlags) {
 				value.IsDev,
 				value.VersionPrefix,
 			)
+			updateProgressCount++
 
 			if err != nil {
 				if err == terminal.InterruptErr {
@@ -522,18 +520,10 @@ func Init(cfg npm.CmdFlags) {
 			}
 
 			if response == updatePackageOptions.skip {
-				updateProgressCount++
-				break
-			}
-
-			if response == updatePackageOptions.finish {
-				fmt.Println("Finished update process")
-				exit = true
 				break
 			}
 
 			if response == updatePackageOptions.show_changes {
-
 				// Open browser url
 				var url string
 
@@ -545,6 +535,7 @@ func Init(cfg npm.CmdFlags) {
 
 				if url == "" {
 					fmt.Println(aurora.Yellow("No repository or homepage URL found"))
+					break
 				}
 
 				fmt.Println("Opening...")
@@ -559,10 +550,14 @@ func Init(cfg npm.CmdFlags) {
 					entry.ShouldUpdate = true      // then modify the copy
 					versionComparison[key] = entry // then reassign map entry
 				}
-				updateProgressCount++
 				break
 			}
 
+			if response == updatePackageOptions.finish {
+				fmt.Println("Finished update process")
+				exit = true
+				break
+			}
 		}
 
 		if exit {
