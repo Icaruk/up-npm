@@ -209,10 +209,10 @@ func promptUpdateDependency(
 	return response, err
 }
 
-func promptWriteJson(options writeJsonOptions) (string, error) {
+func promptWriteJson(options writeJsonOptions, file string) (string, error) {
 	response := ""
 	prompt := &survey.Select{
-		Message: "Update package.json?",
+		Message: fmt.Sprintf("Update %s?", file),
 		Options: []string{
 			options.yes,
 			options.yes_backup,
@@ -257,18 +257,18 @@ func initProgressBar(maxBar int) *progressbar.ProgressBar {
 	)
 }
 
-func createPackageJsonBackup() (bool, error) {
+func createPackageJsonBackup(file string) (bool, error) {
 	date := time.Now().Format("2006-01-02-15-04-05")
 
-	backupFileName := fmt.Sprintf("backup.%s.package.json", date)
+	backupFileName := fmt.Sprintf("backup.%s.%s", date, file)
 
-	file, err := os.ReadFile("package.json")
+	fileData, err := os.ReadFile(file)
 	if err != nil {
 		fmt.Println(err)
 		return false, err
 	}
 
-	err = os.WriteFile(backupFileName, file, 0644)
+	err = os.WriteFile(backupFileName, fileData, 0644)
 	if err != nil {
 		fmt.Println(err)
 		return false, err
@@ -597,7 +597,7 @@ func Init(cfg npm.CmdFlags) {
 		no:         "No",
 	}
 
-	response, err := promptWriteJson(writeJsonOptions)
+	response, err := promptWriteJson(writeJsonOptions, cfg.File)
 
 	if err != nil {
 		if err == terminal.InterruptErr {
@@ -611,7 +611,7 @@ func Init(cfg npm.CmdFlags) {
 	}
 
 	if response == writeJsonOptions.yes_backup {
-		createPackageJsonBackup()
+		createPackageJsonBackup(cfg.File)
 	}
 
 	// Stringify package.json
@@ -634,16 +634,22 @@ func Init(cfg npm.CmdFlags) {
 	}
 
 	// Write to file
-	err = os.WriteFile("package.json", []byte(jsonFileStr), 0644)
+	err = os.WriteFile(cfg.File, []byte(jsonFileStr), 0644)
 	if err != nil {
 		fmt.Println(err)
 	}
 
 	fmt.Println()
-	fmt.Println(
-		"✅ package.json has been updated with",
-		aurora.Sprintf(aurora.Green("%d updated packages"), shouldUpdateCount),
+
+	fmt.Printf(
+		"✅ %s has been updated with %s\n",
+		cfg.File,
+		aurora.Sprintf(
+			aurora.Green("%d updated packages"),
+			shouldUpdateCount,
+		),
 	)
+
 	fmt.Println()
 
 	fmt.Println("Run 'npm install' to install dependencies")
