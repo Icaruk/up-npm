@@ -25,8 +25,7 @@ function compareSemver(versionA, versionB) {
 	for (let i = 0; i < arr1.length; i++) {
 		if (arr1[i] > arr2[i]) {
 			return 1;
-		}
-		if (arr2[i] > arr1[i]) {
+		} else if (arr2[i] > arr1[i]) {
 			return -1;
 		}
 	}
@@ -60,9 +59,7 @@ async function fetchLatestVersion() {
 		return new Promise((resolve, reject) => {
 			const req = https.get(options, (res) => {
 				let body = "";
-				res.on("data", (chunk) => {
-					body += chunk;
-				});
+				res.on("data", (chunk) => (body += chunk));
 				res.on("end", () => {
 					const json = JSON.parse(body);
 
@@ -190,14 +187,14 @@ async function init() {
 
 		switch (platform) {
 			case "win32":
-				platformName = "windows";
+				platformName = `windows`;
 				isWindows = true;
 				break;
 			case "darwin":
-				platformName = "darwin";
+				platformName = `darwin`;
 				break;
 			case "linux":
-				platformName = "linux";
+				platformName = `linux`;
 				break;
 			default:
 				console.error("Unsupported platform:", platform);
@@ -241,13 +238,12 @@ async function init() {
 		const bufferView = await downloadBinary(downloadUrl, destination);
 		console.log("OK");
 
-		fs.writeFileSync(currentVersionPath, latestVersion);
-
 		if (!isWindows) {
 			// "chmod +rwx up-npm"
 			fs.chmodSync(destination, 0o700);
-			fs.chmodSync(currentVersionPath, 0o600);
 		}
+
+		fs.writeFileSync(currentVersionPath, latestVersion);
 	} catch (err) {
 		console.error(err);
 	}
