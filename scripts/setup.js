@@ -241,12 +241,13 @@ async function init() {
 		const bufferView = await downloadBinary(downloadUrl, destination);
 		console.log("OK");
 
+		fs.writeFileSync(currentVersionPath, latestVersion);
+
 		if (!isWindows) {
 			// "chmod +rwx up-npm"
 			fs.chmodSync(destination, 0o700);
+			fs.chmodSync(currentVersionPath, 0o600);
 		}
-
-		fs.writeFileSync(currentVersionPath, latestVersion);
 	} catch (err) {
 		console.error(err);
 	}
