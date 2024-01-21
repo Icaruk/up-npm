@@ -5,14 +5,37 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/icaruk/updatenpm/pkg/updater"
+	"github.com/icaruk/up-npm/pkg/updater"
+	"github.com/icaruk/up-npm/pkg/utils/npm"
 	"github.com/spf13/cobra"
 )
 
-var Cfg = updater.CmdFlags{
-	Dev:            false,
+var Cfg = npm.CmdFlags{
+	NoDev:          false,
 	AllowDowngrade: false,
 	Filter:         "",
+	File:           "",
+}
+
+type Flag struct {
+	Long  string
+	Short string
+}
+
+var AllowedFlags = map[string]Flag{
+	"noDev": {
+		Long: "no-dev",
+	},
+	"filter": {
+		Long:  "filter",
+		Short: "f",
+	},
+	"allowDowngrade": {
+		Long: "allow-downgrade",
+	},
+	"file": {
+		Long: "file",
+	},
 }
 
 var rootCmd = &cobra.Command{
@@ -21,29 +44,35 @@ var rootCmd = &cobra.Command{
 	Long:  `up-npm is a easy way to keep your npm dependencies up to date.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 
-		devFlag, err := cmd.Flags().GetBool("dev")
+		noDevFlag, err := cmd.Flags().GetBool(AllowedFlags["noDev"].Long)
 		if err != nil {
 			return err
 		}
 
-		allowDowngradeFlag, err := cmd.Flags().GetBool("dev")
+		filterFlag, err := cmd.Flags().GetString(AllowedFlags["filter"].Long)
 		if err != nil {
 			return err
 		}
 
-		filterFlag, err := cmd.Flags().GetString("filter")
+		allowDowngradeFlag, err := cmd.Flags().GetBool(AllowedFlags["allowDowngrade"].Long)
 		if err != nil {
 			return err
 		}
 
-		Cfg = updater.CmdFlags{
-			Dev:            devFlag,
-			AllowDowngrade: allowDowngradeFlag,
+		file, err := cmd.Flags().GetString(AllowedFlags["file"].Long)
+		if err != nil {
+			return err
+		}
+
+		Cfg = npm.CmdFlags{
+			NoDev:          noDevFlag,
 			Filter:         filterFlag,
+			AllowDowngrade: allowDowngradeFlag,
+			File:           file,
 		}
 
-		Cfg.Dev = devFlag
-		Cfg.AllowDowngrade = devFlag
+		// Cfg.NoDev = noDevFlag
+		// Cfg.AllowDowngrade = noDevFlag
 
 		updater.Init(Cfg)
 
@@ -68,9 +97,31 @@ var whereCmd = &cobra.Command{
 }
 
 func init() {
-	rootCmd.Flags().BoolVarP(&Cfg.Dev, "dev", "d", false, "Include dev dependencies")
-	rootCmd.Flags().StringVarP(&Cfg.Filter, "filter", "f", "", "Filter dependencies by package name")
-	rootCmd.Flags().BoolVar(&Cfg.AllowDowngrade, "allow-downgrade", false, "Allows downgrading a if latest version is older than current")
+	rootCmd.Flags().BoolVar(
+		&Cfg.NoDev,
+		AllowedFlags["noDev"].Long,
+		false,
+		"Exclude dev dependencies",
+	)
+	rootCmd.Flags().StringVarP(
+		&Cfg.Filter,
+		AllowedFlags["filter"].Long,
+		AllowedFlags["filter"].Short,
+		"",
+		"Filter dependencies by package name",
+	)
+	rootCmd.Flags().BoolVar(
+		&Cfg.AllowDowngrade,
+		AllowedFlags["allowDowngrade"].Long,
+		false,
+		"Allows downgrading a if latest version is older than current",
+	)
+	rootCmd.Flags().StringVar(
+		&Cfg.File,
+		AllowedFlags["file"].Long,
+		"package.json",
+		"File dependencies by package name",
+	)
 
 	rootCmd.AddCommand(whereCmd)
 

@@ -2,6 +2,8 @@ package updater
 
 import (
 	"testing"
+
+	"github.com/icaruk/up-npm/pkg/utils/version"
 )
 
 func TestGetVersionUpdateType(t *testing.T) {
@@ -9,8 +11,8 @@ func TestGetVersionUpdateType(t *testing.T) {
 		name              string
 		current           string
 		latest            string
-		expectedType      string
-		expectedDirection int
+		expectedType      version.UpgradeType
+		expectedDirection version.UpgradeDirection
 	}{
 		{name: "Test Case 1", current: "1.0.0", latest: "1.0.1", expectedType: "patch", expectedDirection: 1},
 		{name: "Test Case 2", current: "1.0.0", latest: "1.1.0", expectedType: "minor", expectedDirection: 1},
@@ -26,7 +28,7 @@ func TestGetVersionUpdateType(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			upgradeType, upgadeDirection := getVersionUpdateType(tc.current, tc.latest)
+			upgradeType, upgadeDirection := version.GetVersionUpdateType(tc.current, tc.latest)
 			if upgradeType != tc.expectedType {
 				t.Errorf("expectedType %v but got %v for %v and %v", tc.expectedType, upgradeType, tc.current, tc.latest)
 			}

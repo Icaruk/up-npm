@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"net/http"
 	"os"
 	"os/exec"
 	"regexp"
@@ -14,19 +13,20 @@ import (
 	"sync"
 	"time"
 
+	npm "github.com/icaruk/up-npm/pkg/utils/npm"
+	packagejson "github.com/icaruk/up-npm/pkg/utils/packagejson"
+	repositorypkg "github.com/icaruk/up-npm/pkg/utils/repository"
+	"github.com/icaruk/up-npm/pkg/utils/version"
+	versionpkg "github.com/icaruk/up-npm/pkg/utils/version"
+
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/AlecAivazis/survey/v2/terminal"
 	"github.com/jedib0t/go-pretty/v6/table"
+	"github.com/jedib0t/go-pretty/v6/text"
 	"github.com/logrusorgru/aurora/v4"
 	"github.com/schollz/progressbar/v3"
 	"github.com/tidwall/sjson"
 )
-
-type CmdFlags struct {
-	Dev            bool
-	AllowDowngrade bool
-	Filter         string
-}
 
 type PackageJSON struct {
 	Name            string            `json:"name"`
@@ -36,44 +36,21 @@ type PackageJSON struct {
 	DevDependencies map[string]string `json:"devDependencies"`
 }
 
-type NpmRegistryPackage struct {
-	ID       string `json:"_id"`
-	Rev      string `json:"_rev"`
-	Name     string `json:"name"`
-	DistTags struct {
-		Latest string `json:"latest"`
-	} `json:"dist-tags"`
-	Versions struct {
-		Version map[string]interface{}
-	} `json:"versions"`
-	Homepage   string `json:"homepage"`
-	Repository struct {
-		Type string `json:"type"`
-		URL  string `json:"url"`
-	} `json:"repository"`
-}
-
-type VersionComparisonItem struct {
-	current       string
-	latest        string
-	versionType   string
-	shouldUpdate  bool
-	homepage      string
-	repositoryUrl string
-	versionPrefix string
-	isDev         bool
-}
-
-func colorizeVersion(version string, versionType string) string {
+func colorizeVersion(version string, versionType versionpkg.UpgradeType) string {
 	vLatestMajor, vLatestMinor, vLatestPatch := getVersionComponents(version)
 
 	var colorizedVersion string
 
-	if versionType == "major" {
-		colorizedVersion = aurora.Sprintf(aurora.Red("%d.%d.%d"), aurora.Red(vLatestMajor), aurora.Red(vLatestMinor), aurora.Red(vLatestPatch))
-	} else if versionType == "minor" {
+	if versionType == versionpkg.Major {
+		colorizedVersion = aurora.Sprintf(
+			aurora.Red("%d.%d.%d"),
+			aurora.Red(vLatestMajor),
+			aurora.Red(vLatestMinor),
+			aurora.Red(vLatestPatch),
+		)
+	} else if versionType == versionpkg.Minor {
 		colorizedVersion = aurora.Sprintf(aurora.White("%d.%d.%d"), aurora.White(vLatestMajor), aurora.Yellow(vLatestMinor), aurora.Yellow(vLatestPatch))
-	} else if versionType == "patch" {
+	} else if versionType == versionpkg.Patch {
 		colorizedVersion = aurora.Sprintf(aurora.White("%d.%d.%d"), aurora.White(vLatestMajor), aurora.White(vLatestMinor), aurora.Green(vLatestPatch))
 	}
 
@@ -88,16 +65,15 @@ func printUpdateProgress(current int, max int) string {
 	)
 }
 
-func printUpdatablePackagesTable(versionComparison map[string]VersionComparisonItem) {
+func printUpdatablePackagesTable(versionComparison map[string]versionpkg.VersionComparisonItem) {
 	t := table.NewWriter()
 	t.SetOutputMirror(os.Stdout)
 	t.AppendHeader(table.Row{"Package", "Current", "Latest"})
-	// t.AppendFooter(table.Row{"", "Total", "1234"})
 
 	// Add rows
 	for key, value := range versionComparison {
-		latestColorized := colorizeVersion(value.latest, value.versionType)
-		t.AppendRow(table.Row{key, value.current, latestColorized})
+		latestColorized := colorizeVersion(value.Latest, value.VersionType)
+		t.AppendRow(table.Row{key, value.Current, latestColorized}, table.RowConfig{AutoMergeAlign: text.AlignRight})
 	}
 
 	t.Render()
@@ -156,28 +132,19 @@ func getVersionComponents(semver string) (int, int, int) {
 	return vCurrentMajor, vCurrentMinor, vCurrentPatch
 }
 
-func fetchNpmRegistry(dependency string) (*http.Response, error) {
-	resp, err := http.Get(fmt.Sprintf("https://registry.npmjs.org/%s", dependency))
-	if err != nil {
-		fmt.Println(err)
-	}
-
-	return resp, err
-}
-
 func countVersionTypes(
-	versionComparison map[string]VersionComparisonItem,
+	versionComparison map[string]versionpkg.VersionComparisonItem,
 ) (
 	majorCount int, minorCount int, patchCount int, totalCount int,
 ) {
 	for _, value := range versionComparison {
 
-		switch value.versionType {
-		case "major":
+		switch value.VersionType {
+		case version.Major:
 			majorCount++
-		case "minor":
+		case version.Minor:
 			minorCount++
-		case "patch":
+		case version.Patch:
 			patchCount++
 		}
 
@@ -202,20 +169,30 @@ type writeJsonOptions struct {
 
 func promptUpdateDependency(
 	options updatePackageOptions,
-	dependency,
-	currentVersion,
-	latestVersion,
-	versionType string,
+	dependency string,
+	currentVersion string,
+	latestVersion string,
+	versionType version.UpgradeType,
 	updateProgressCount int,
 	maxUpdateProgress int,
+	isDevDependency bool,
+	versionPrefix string,
 ) (string, error) {
+
+	isDevDependencyText := ""
+	if isDevDependency {
+		isDevDependencyText = aurora.Sprintf(
+			aurora.Magenta(" (devDependency)"),
+		)
+	}
 
 	response := ""
 	prompt := &survey.Select{
 		Message: fmt.Sprintf(
-			"%s Update '%s' from %s to %s?",
+			"%s Update \"%s\"%s from %s to %s?",
 			printUpdateProgress(updateProgressCount, maxUpdateProgress),
 			dependency,
+			isDevDependencyText,
 			currentVersion,
 			colorizeVersion(latestVersion, versionType),
 		),
@@ -231,10 +208,10 @@ func promptUpdateDependency(
 	return response, err
 }
 
-func promptWriteJson(options writeJsonOptions) (string, error) {
+func promptWriteJson(options writeJsonOptions, file string) (string, error) {
 	response := ""
 	prompt := &survey.Select{
-		Message: "Update package.json?",
+		Message: fmt.Sprintf("Update %s?", file),
 		Options: []string{
 			options.yes,
 			options.yes_backup,
@@ -261,61 +238,6 @@ const (
 	UpgradeDirectionDowngrade UpgradeDirection = -1
 )
 
-func getVersionUpdateType(currentVersion, latestVersion string) (upgradeType string, upgradeDirection int) {
-
-	if latestVersion == currentVersion {
-		return "none", 0
-	}
-
-	currentArr := strings.Split(currentVersion, ".") // 1.0.0
-	latestArr := strings.Split(latestVersion, ".")   // 0.9.9
-
-	versionChange := []int{0, 0, 0}
-
-	for i := 0; i < len(currentArr); i++ {
-		vCur, _ := strconv.Atoi(currentArr[i])
-		vLat, _ := strconv.Atoi(latestArr[i])
-
-		// 0 = major
-		// 1 = minor
-		// 2 = patch
-
-		var changeDirection int
-
-		if vLat > vCur {
-			changeDirection = 1
-		} else if vLat < vCur {
-			changeDirection = -1
-		}
-
-		versionChange[i] = changeDirection
-
-	}
-
-	for i, change := range versionChange {
-		if change == -1 {
-			if i == 0 {
-				return "major", change
-			} else if i == 1 {
-				return "minor", change
-			} else {
-				return "patch", change
-			}
-		}
-		if change == 1 {
-			if i == 0 {
-				return "major", change
-			} else if i == 1 {
-				return "minor", change
-			} else {
-				return "patch", change
-			}
-		}
-	}
-
-	return "none", 0
-}
-
 func initProgressBar(maxBar int) *progressbar.ProgressBar {
 	return progressbar.NewOptions(maxBar,
 		progressbar.OptionEnableColorCodes(true),
@@ -334,18 +256,18 @@ func initProgressBar(maxBar int) *progressbar.ProgressBar {
 	)
 }
 
-func createPackageJsonBackup() (bool, error) {
+func createPackageJsonBackup(file string) (bool, error) {
 	date := time.Now().Format("2006-01-02-15-04-05")
 
-	backupFileName := fmt.Sprintf("backup.%s.package.json", date)
+	backupFileName := fmt.Sprintf("backup.%s.%s", date, file)
 
-	file, err := os.ReadFile("package.json")
+	fileData, err := os.ReadFile(file)
 	if err != nil {
 		fmt.Println(err)
 		return false, err
 	}
 
-	err = os.WriteFile(backupFileName, file, 0644)
+	err = os.WriteFile(backupFileName, fileData, 0644)
 	if err != nil {
 		fmt.Println(err)
 		return false, err
@@ -374,57 +296,14 @@ func Openbrowser(url string) {
 
 }
 
-func getCleanVersion(version string) (string, string) {
-	re := regexp.MustCompile(`([^0-9]*)(\d+\.\d+\.\d+)(.*)`)
-	reSubmatch := re.FindStringSubmatch(version)
-
-	prefix := reSubmatch[1]
-	cleanVersion := reSubmatch[2]
-
-	return prefix, cleanVersion
-}
-
-func getRepositoryUrl(url string) string {
-	// https://regex101.com/r/AEVsGf/2
-	re := regexp.MustCompile(`(git[+@])?(.*)`)
-	matches := re.FindStringSubmatch(url)
-
-	if matches == nil {
-		return ""
-	}
-
-	repoUrl := matches[2]
-	repoUrl = strings.TrimSuffix(repoUrl, ".git")
-
-	// https://regex101.com/r/iGLlG8/1
-	re = regexp.MustCompile(`((ssh:\/\/git@)?(git:\/\/)?)(.*)`)
-	matches = re.FindStringSubmatch(repoUrl)
-
-	if matches == nil {
-		return ""
-	}
-
-	repoUrl = matches[4]
-
-	// Replace ":" with "/"
-	repoUrl = strings.Replace(repoUrl, ".com:", ".com/", -1)
-
-	// Append "https://" if missing
-	if !strings.HasPrefix(repoUrl, "https://") {
-		repoUrl = "https://" + repoUrl
-	}
-
-	return repoUrl
-}
-
 const concurrencyLimit int = 10
 
 func readDependencies(
 	dependencyList map[string]string,
-	targetMap map[string]VersionComparisonItem,
+	targetMap map[string]versionpkg.VersionComparisonItem,
 	isDev bool,
 	bar *progressbar.ProgressBar,
-	cfg CmdFlags,
+	cfg npm.CmdFlags,
 ) {
 
 	var wg sync.WaitGroup
@@ -446,7 +325,7 @@ func readDependencies(
 		}
 
 		// Get version and prefix
-		versionPrefix, cleanCurrentVersion := getCleanVersion(currentVersion)
+		versionPrefix, cleanCurrentVersion := version.GetCleanVersion(currentVersion)
 
 		if cleanCurrentVersion == "" {
 			fmt.Println(packageName, " has unsupported/invalid version, skipping...")
@@ -463,7 +342,7 @@ func readDependencies(
 			semaphoreChan <- struct{}{}
 
 			// Perform get request to npm registry
-			resp, err := fetchNpmRegistry(dependency)
+			resp, err := npm.FetchNpmRegistry(dependency)
 			if err != nil {
 				fmt.Println("Failed to fetch", dependency, " from npm registry, skipping...")
 				resultsChan <- "" // Enviar un resultado vacío para que se tenga en cuenta en la cuenta de resultados
@@ -476,21 +355,9 @@ func readDependencies(
 			json.NewDecoder(resp.Body).Decode(&result)
 
 			distTags := result["dist-tags"].(map[string]interface{})
-
-			var homepage string
-			if result["homepage"] != nil {
-				homepage = result["homepage"].(string)
-			}
-
-			var repository map[string]interface{}
-			if result["repository"] != nil {
-				repository = result["repository"].(map[string]interface{})
-			}
-
-			var repositoryUrl string
-			if repository["url"] != nil {
-				repositoryUrl = getRepositoryUrl(repository["url"].(string))
-			}
+			homepage, _ := result["homepage"].(string)
+			repository := result["repository"].(map[string]interface{})
+			repositoryUrl := repositorypkg.GetRepositoryUrl(repository["url"].(string))
 
 			// Get latest version from distTags
 			var latestVersion string
@@ -501,20 +368,19 @@ func readDependencies(
 			}
 
 			// Get version update type (major, minor, patch, none)
-			upgradeType, upgradeDirection := getVersionUpdateType(cleanCurrentVersion, latestVersion)
+			upgradeType, upgradeDirection := versionpkg.GetVersionUpdateType(cleanCurrentVersion, latestVersion)
 
 			// Save data
-			if (upgradeDirection == 1) ||
-				(cfg.AllowDowngrade && upgradeDirection == -1) {
-				targetMap[dependency] = VersionComparisonItem{
-					current:       cleanCurrentVersion,
-					latest:        latestVersion,
-					versionType:   upgradeType,
-					shouldUpdate:  false,
-					homepage:      homepage,
-					repositoryUrl: repositoryUrl,
-					versionPrefix: versionPrefix,
-					isDev:         isDev,
+			if upgradeDirection == versionpkg.Upgrade {
+				targetMap[dependency] = versionpkg.VersionComparisonItem{
+					Current:       cleanCurrentVersion,
+					Latest:        latestVersion,
+					VersionType:   upgradeType,
+					ShouldUpdate:  false,
+					Homepage:      homepage,
+					RepositoryUrl: repositoryUrl,
+					VersionPrefix: versionPrefix,
+					IsDev:         isDev,
 				}
 			}
 
@@ -534,26 +400,15 @@ func readDependencies(
 
 }
 
-func Init(cfg CmdFlags) {
+func Init(cfg npm.CmdFlags) {
 
 	var isFilterFilled bool = cfg.Filter != ""
 
 	fmt.Println()
 
-	// Read json file
-	jsonFile, err := os.ReadFile("package.json")
-	if err != nil {
-		fmt.Println(aurora.Red("No package.json found."), "Please run this command from the root of the project.")
-		fmt.Println()
-		return
-	}
+	dependencies, devDependencies, jsonFile, err := packagejson.GetDependenciesFromPackageJson(cfg.File, cfg.NoDev)
 
-	// Parse json file
-	var packageJsonMap PackageJSON
-
-	err = json.Unmarshal(jsonFile, &packageJsonMap)
 	if err != nil {
-		fmt.Println(aurora.Red("Error reading package.json"), "invalid JSON or corrupt file. Error:")
 		fmt.Println(err)
 		fmt.Println()
 		return
@@ -563,28 +418,7 @@ func Init(cfg CmdFlags) {
 	dependencies := make(map[string]string)
 	devDependencies := make(map[string]string)
 
-	// Get dependencies
-	if packageJsonMap.Dependencies != nil {
-		dependencies = packageJsonMap.Dependencies
-	}
-	if packageJsonMap.DevDependencies != nil {
-		devDependencies = packageJsonMap.DevDependencies
-	}
-
-	if dependencies == nil && devDependencies == nil {
-		fmt.Println(aurora.Red("No dependencies found on package.json"))
-		fmt.Println()
-		return
-	}
-
-	if cfg.Dev {
-		// Merge devDependencies with dependencies
-		for key, value := range devDependencies {
-			dependencies[key] = value
-		}
-	}
-
-	versionComparison := map[string]VersionComparisonItem{}
+	versionComparison := map[string]versionpkg.VersionComparisonItem{}
 
 	// Progress bar
 	maxBar := len(dependencies)
@@ -594,9 +428,9 @@ func Init(cfg CmdFlags) {
 	dependencyCount := len(dependencies)
 	readDependencies(dependencies, versionComparison, false, bar, cfg)
 
-	if cfg.Dev {
-		dependencyCount += len(devDependencies)
-		readDependencies(devDependencies, versionComparison, true, bar, cfg)
+	// Process devDependencies
+	if !cfg.NoDev {
+		readDependencies(devDependencies, versionComparison, true, bar, cfg.Filter)
 	}
 
 	// Count total dependencies and filtered dependencies
@@ -647,14 +481,38 @@ func Init(cfg CmdFlags) {
 
 		for {
 
+			if value.VersionPrefix == "" {
+				isDevDependencyText := ""
+				if value.IsDev {
+					isDevDependencyText = aurora.Sprintf(
+						aurora.Magenta(" (devDependency)"),
+					)
+				}
+
+				message := aurora.Sprintf(
+					aurora.Yellow("Upgrade ignored because package \"%s\"%s is locked to version %s"),
+					key,
+					isDevDependencyText,
+					value.Current,
+				)
+
+				fmt.Println(message)
+
+				updateProgressCount++
+				break
+
+			}
+
 			response, err := promptUpdateDependency(
 				updatePackageOptions,
 				key,
-				value.current,
-				value.latest,
-				value.versionType,
+				value.Current,
+				value.Latest,
+				value.VersionType,
 				updateProgressCount,
 				totalCount,
+				value.IsDev,
+				value.VersionPrefix,
 			)
 
 			if err != nil {
@@ -679,10 +537,10 @@ func Init(cfg CmdFlags) {
 				// Open browser url
 				var url string
 
-				if value.repositoryUrl != "" {
-					url = value.repositoryUrl + "/releases" + "#:~:text=" + value.current
+				if value.RepositoryUrl != "" {
+					url = value.RepositoryUrl + "/releases" + "#:~:text=" + value.Current
 				} else {
-					url = value.homepage
+					url = value.Homepage
 				}
 
 				if url == "" {
@@ -698,8 +556,8 @@ func Init(cfg CmdFlags) {
 			if response == updatePackageOptions.update {
 				// get a copy of the entry
 				if entry, ok := versionComparison[key]; ok {
-					entry.shouldUpdate = true      // modify the copy
-					versionComparison[key] = entry // reassign map entry
+					entry.ShouldUpdate = true      // then modify the copy
+					versionComparison[key] = entry // then reassign map entry
 				}
 				updateProgressCount++
 				break
@@ -720,7 +578,7 @@ func Init(cfg CmdFlags) {
 	// Check how many updates are on versionComparison with value.shouldUpdate = true
 	var shouldUpdateCount int
 	for _, value := range versionComparison {
-		if value.shouldUpdate {
+		if value.ShouldUpdate {
 			shouldUpdateCount++
 		}
 	}
@@ -744,7 +602,7 @@ func Init(cfg CmdFlags) {
 		no:         "No",
 	}
 
-	response, err := promptWriteJson(writeJsonOptions)
+	response, err := promptWriteJson(writeJsonOptions, cfg.File)
 
 	if err != nil {
 		if err == terminal.InterruptErr {
@@ -758,7 +616,7 @@ func Init(cfg CmdFlags) {
 	}
 
 	if response == writeJsonOptions.yes_backup {
-		createPackageJsonBackup()
+		createPackageJsonBackup(cfg.File)
 	}
 
 	// Stringify package.json
@@ -766,34 +624,37 @@ func Init(cfg CmdFlags) {
 
 	// Write dependencies to package.json
 	for key, value := range versionComparison {
-		if value.shouldUpdate {
+		if value.ShouldUpdate {
 
 			dependenciesKeyName := "dependencies"
-			if value.isDev {
+			if value.IsDev {
 				dependenciesKeyName = "devDependencies"
 			}
 
-			// replace "key" characters like "." and replace with "\."
-			safeKey := strings.ReplaceAll(key, ".", "\\.")
-
-			dotPath := fmt.Sprintf("%s.%s", dependenciesKeyName, safeKey)
-			latestVersion := fmt.Sprintf("%s%s", value.versionPrefix, value.latest)
+			dotPath := fmt.Sprintf("%s.%s", dependenciesKeyName, key)
+			latestVersion := fmt.Sprintf("%s%s", value.VersionPrefix, value.Latest)
 
 			jsonFileStr, _ = sjson.Set(jsonFileStr, dotPath, latestVersion)
 		}
 	}
 
 	// Write to file
-	err = os.WriteFile("package.json", []byte(jsonFileStr), 0644)
+	err = os.WriteFile(cfg.File, []byte(jsonFileStr), 0644)
 	if err != nil {
 		fmt.Println(err)
 	}
 
 	fmt.Println()
-	fmt.Println(
-		"✅ package.json has been updated with",
-		aurora.Sprintf(aurora.Green("%d updated packages"), shouldUpdateCount),
+
+	fmt.Printf(
+		"✅ %s has been updated with %s\n",
+		cfg.File,
+		aurora.Sprintf(
+			aurora.Green("%d updated packages"),
+			shouldUpdateCount,
+		),
 	)
+
 	fmt.Println()
 
 	fmt.Println("Run 'npm install' to install dependencies")
