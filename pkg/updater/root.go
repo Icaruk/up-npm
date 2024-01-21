@@ -36,34 +36,6 @@ type PackageJSON struct {
 	DevDependencies map[string]string `json:"devDependencies"`
 }
 
-type VersionComparisonItem struct {
-	current       string
-	latest        string
-	versionType   version.UpgradeType
-	shouldUpdate  bool
-	homepage      string
-	repositoryUrl string
-	versionPrefix string
-	isDev         bool
-}
-
-type NpmRegistryPackage struct {
-	ID       string `json:"_id"`
-	Rev      string `json:"_rev"`
-	Name     string `json:"name"`
-	DistTags struct {
-		Latest string `json:"latest"`
-	} `json:"dist-tags"`
-	Versions struct {
-		Version map[string]interface{}
-	} `json:"versions"`
-	Homepage   string `json:"homepage"`
-	Repository struct {
-		Type string `json:"type"`
-		URL  string `json:"url"`
-	} `json:"repository"`
-}
-
 func colorizeVersion(version string, versionType versionpkg.UpgradeType) string {
 	vLatestMajor, vLatestMinor, vLatestPatch := getVersionComponents(version)
 
@@ -93,15 +65,15 @@ func printUpdateProgress(current int, max int) string {
 	)
 }
 
-func printUpdatablePackagesTable(versionComparison map[string]VersionComparisonItem) {
+func printUpdatablePackagesTable(versionComparison map[string]versionpkg.VersionComparisonItem) {
 	t := table.NewWriter()
 	t.SetOutputMirror(os.Stdout)
 	t.AppendHeader(table.Row{"Package", "Current", "Latest"})
 
 	// Add rows
 	for key, value := range versionComparison {
-		latestColorized := colorizeVersion(value.latest, value.versionType)
-		t.AppendRow(table.Row{key, value.current, latestColorized}, table.RowConfig{AutoMergeAlign: text.AlignRight})
+		latestColorized := colorizeVersion(value.Latest, value.VersionType)
+		t.AppendRow(table.Row{key, value.Current, latestColorized}, table.RowConfig{AutoMergeAlign: text.AlignRight})
 	}
 
 	t.Render()
@@ -161,13 +133,13 @@ func getVersionComponents(semver string) (int, int, int) {
 }
 
 func countVersionTypes(
-	versionComparison map[string]VersionComparisonItem,
+	versionComparison map[string]versionpkg.VersionComparisonItem,
 ) (
 	majorCount int, minorCount int, patchCount int, totalCount int,
 ) {
 	for _, value := range versionComparison {
 
-		switch value.versionType {
+		switch value.VersionType {
 		case version.Major:
 			majorCount++
 		case version.Minor:
@@ -329,7 +301,7 @@ const concurrencyLimit int = 10
 
 func readDependencies(
 	dependencyList map[string]string,
-	targetMap map[string]VersionComparisonItem,
+	targetMap map[string]versionpkg.VersionComparisonItem,
 	isDev bool,
 	bar *progressbar.ProgressBar,
 	filter string,
@@ -384,21 +356,9 @@ func readDependencies(
 			json.NewDecoder(resp.Body).Decode(&result)
 
 			distTags := result["dist-tags"].(map[string]interface{})
-
-			var homepage string
-			if result["homepage"] != nil {
-				homepage = result["homepage"].(string)
-			}
-
-			var repository map[string]interface{}
-			if result["repository"] != nil {
-				repository = result["repository"].(map[string]interface{})
-			}
-
-			var repositoryUrl string
-			if repository["url"] != nil {
-				repositoryUrl = repositorypkg.GetRepositoryUrl(repository["url"].(string))
-			}
+			homepage, _ := result["homepage"].(string)
+			repository := result["repository"].(map[string]interface{})
+			repositoryUrl := repositorypkg.GetRepositoryUrl(repository["url"].(string))
 
 			// Get latest version from distTags
 			var latestVersion string
@@ -409,19 +369,19 @@ func readDependencies(
 			}
 
 			// Get version update type (major, minor, patch, none)
-			upgradeType, upgradeDirection := version.GetVersionUpdateType(cleanCurrentVersion, latestVersion)
+			upgradeType, upgradeDirection := versionpkg.GetVersionUpdateType(cleanCurrentVersion, latestVersion)
 
 			// Save data
-			if upgradeDirection == version.Upgrade {
-				targetMap[dependency] = VersionComparisonItem{
-					current:       cleanCurrentVersion,
-					latest:        latestVersion,
-					versionType:   upgradeType,
-					shouldUpdate:  false,
-					homepage:      homepage,
-					repositoryUrl: repositoryUrl,
-					versionPrefix: versionPrefix,
-					isDev:         isDev,
+			if upgradeDirection == versionpkg.Upgrade {
+				targetMap[dependency] = versionpkg.VersionComparisonItem{
+					Current:       cleanCurrentVersion,
+					Latest:        latestVersion,
+					VersionType:   upgradeType,
+					ShouldUpdate:  false,
+					Homepage:      homepage,
+					RepositoryUrl: repositoryUrl,
+					VersionPrefix: versionPrefix,
+					IsDev:         isDev,
 				}
 			}
 
@@ -447,7 +407,7 @@ func Init(cfg npm.CmdFlags) {
 
 	fmt.Println()
 
-	dependencies, jsonFile, err := packagejson.GetDependenciesFromPackageJson(cfg.File, cfg.NoDev)
+	dependencies, devDependencies, jsonFile, err := packagejson.GetDependenciesFromPackageJson(cfg.File, cfg.NoDev)
 
 	if err != nil {
 		fmt.Println(err)
@@ -455,7 +415,7 @@ func Init(cfg npm.CmdFlags) {
 		return
 	}
 
-	versionComparison := map[string]VersionComparisonItem{}
+	versionComparison := map[string]versionpkg.VersionComparisonItem{}
 
 	// Progress bar
 	maxBar := len(dependencies)
@@ -464,6 +424,11 @@ func Init(cfg npm.CmdFlags) {
 	// Process dependencies
 	dependencyCount := len(dependencies)
 	readDependencies(dependencies, versionComparison, false, bar, cfg.Filter)
+
+	// Process devDependencies
+	if !cfg.NoDev {
+		readDependencies(devDependencies, versionComparison, true, bar, cfg.Filter)
+	}
 
 	// Count total dependencies and filtered dependencies
 	filteredDependencyCount := dependencyCount
@@ -513,9 +478,9 @@ func Init(cfg npm.CmdFlags) {
 
 		for {
 
-			if value.versionPrefix == "" {
+			if value.VersionPrefix == "" {
 				isDevDependencyText := ""
-				if value.isDev {
+				if value.IsDev {
 					isDevDependencyText = aurora.Sprintf(
 						aurora.Magenta(" (devDependency)"),
 					)
@@ -525,7 +490,7 @@ func Init(cfg npm.CmdFlags) {
 					aurora.Yellow("Upgrade ignored because package \"%s\"%s is locked to version %s"),
 					key,
 					isDevDependencyText,
-					value.current,
+					value.Current,
 				)
 
 				fmt.Println(message)
@@ -538,13 +503,13 @@ func Init(cfg npm.CmdFlags) {
 			response, err := promptUpdateDependency(
 				updatePackageOptions,
 				key,
-				value.current,
-				value.latest,
-				value.versionType,
+				value.Current,
+				value.Latest,
+				value.VersionType,
 				updateProgressCount,
 				totalCount,
-				value.isDev,
-				value.versionPrefix,
+				value.IsDev,
+				value.VersionPrefix,
 			)
 			updateProgressCount++
 
@@ -562,10 +527,10 @@ func Init(cfg npm.CmdFlags) {
 				// Open browser url
 				var url string
 
-				if value.repositoryUrl != "" {
-					url = value.repositoryUrl + "/releases" + "#:~:text=" + value.current
+				if value.RepositoryUrl != "" {
+					url = value.RepositoryUrl + "/releases" + "#:~:text=" + value.Current
 				} else {
-					url = value.homepage
+					url = value.Homepage
 				}
 
 				if url == "" {
@@ -582,7 +547,7 @@ func Init(cfg npm.CmdFlags) {
 			if response == updatePackageOptions.update {
 				// get a copy of the entry
 				if entry, ok := versionComparison[key]; ok {
-					entry.shouldUpdate = true      // then modify the copy
+					entry.ShouldUpdate = true      // then modify the copy
 					versionComparison[key] = entry // then reassign map entry
 				}
 				break
@@ -608,7 +573,7 @@ func Init(cfg npm.CmdFlags) {
 	// Check how many updates are on versionComparison with value.shouldUpdate = true
 	var shouldUpdateCount int
 	for _, value := range versionComparison {
-		if value.shouldUpdate {
+		if value.ShouldUpdate {
 			shouldUpdateCount++
 		}
 	}
@@ -654,15 +619,15 @@ func Init(cfg npm.CmdFlags) {
 
 	// Write dependencies to package.json
 	for key, value := range versionComparison {
-		if value.shouldUpdate {
+		if value.ShouldUpdate {
 
 			dependenciesKeyName := "dependencies"
-			if value.isDev {
+			if value.IsDev {
 				dependenciesKeyName = "devDependencies"
 			}
 
 			dotPath := fmt.Sprintf("%s.%s", dependenciesKeyName, key)
-			latestVersion := fmt.Sprintf("%s%s", value.versionPrefix, value.latest)
+			latestVersion := fmt.Sprintf("%s%s", value.VersionPrefix, value.Latest)
 
 			jsonFileStr, _ = sjson.Set(jsonFileStr, dotPath, latestVersion)
 		}

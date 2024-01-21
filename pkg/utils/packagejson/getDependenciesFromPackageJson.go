@@ -18,7 +18,7 @@ type PackageJSON struct {
 	DevDependencies map[string]string `json:"devDependencies"`
 }
 
-func GetDependenciesFromPackageJson(packageJsonFilename string, preventDevDependencies bool) (dependencies map[string]string, jsonFile []byte, err error) {
+func GetDependenciesFromPackageJson(packageJsonFilename string, preventDevDependencies bool) (dependencies map[string]string, devDependencies map[string]string, jsonFile []byte, err error) {
 
 	// Read json file
 	jsonFile, err = os.ReadFile(packageJsonFilename)
@@ -34,7 +34,7 @@ func GetDependenciesFromPackageJson(packageJsonFilename string, preventDevDepend
 
 		errStr := b.String()
 
-		return nil, nil, errors.New(errStr)
+		return nil, nil, nil, errors.New(errStr)
 	}
 
 	// Parse json file
@@ -55,12 +55,12 @@ func GetDependenciesFromPackageJson(packageJsonFilename string, preventDevDepend
 
 		errStr := b.String()
 
-		return nil, nil, errors.New(errStr)
+		return nil, nil, nil, errors.New(errStr)
 	}
 
 	// Initialize empty
 	dependencies = make(map[string]string)
-	devDependencies := make(map[string]string)
+	devDependencies = make(map[string]string)
 
 	// Get dependencies
 	if packageJsonMap.Dependencies != nil {
@@ -76,15 +76,15 @@ func GetDependenciesFromPackageJson(packageJsonFilename string, preventDevDepend
 			packageJsonFilename,
 		)
 
-		return nil, nil, errors.New(errStr)
+		return nil, nil, nil, errors.New(errStr)
 	}
 
-	if !preventDevDependencies {
+	/* if !preventDevDependencies {
 		// Merge devDependencies with dependencies
 		for key, value := range devDependencies {
 			dependencies[key] = value
 		}
-	}
+	} */
 
-	return dependencies, jsonFile, nil
+	return dependencies, devDependencies, jsonFile, nil
 }
