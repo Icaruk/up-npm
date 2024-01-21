@@ -415,8 +415,8 @@ func Init(cfg npm.CmdFlags) {
 	}
 
 	// Initialize empty
-	dependencies := make(map[string]string)
-	devDependencies := make(map[string]string)
+	dependencies = make(map[string]string)
+	devDependencies = make(map[string]string)
 
 	versionComparison := map[string]versionpkg.VersionComparisonItem{}
 
@@ -430,7 +430,7 @@ func Init(cfg npm.CmdFlags) {
 
 	// Process devDependencies
 	if !cfg.NoDev {
-		readDependencies(devDependencies, versionComparison, true, bar, cfg.Filter)
+		readDependencies(devDependencies, versionComparison, true, bar, cfg)
 	}
 
 	// Count total dependencies and filtered dependencies
