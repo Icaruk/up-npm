@@ -166,8 +166,7 @@ async function downloadBinary(url, fileName) {
 
 async function init() {
 	try {
-		const { isAvailableUpdate, latestVersion, assets } =
-			await checkIsAvailableUpdate();
+		const { isAvailableUpdate, latestVersion, assets } = await checkIsAvailableUpdate();
 
 		if (!isAvailableUpdate) {
 			console.log("You are already up-to-date!");

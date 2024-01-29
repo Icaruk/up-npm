@@ -13,10 +13,10 @@ import (
 	"sync"
 	"time"
 
+	"github.com/icaruk/up-npm/pkg/utils/cli"
 	npm "github.com/icaruk/up-npm/pkg/utils/npm"
 	packagejson "github.com/icaruk/up-npm/pkg/utils/packagejson"
 	repositorypkg "github.com/icaruk/up-npm/pkg/utils/repository"
-	"github.com/icaruk/up-npm/pkg/utils/version"
 	versionpkg "github.com/icaruk/up-npm/pkg/utils/version"
 
 	"github.com/AlecAivazis/survey/v2"
@@ -140,11 +140,11 @@ func countVersionTypes(
 	for _, value := range versionComparison {
 
 		switch value.VersionType {
-		case version.Major:
+		case versionpkg.Major:
 			majorCount++
-		case version.Minor:
+		case versionpkg.Minor:
 			minorCount++
-		case version.Patch:
+		case versionpkg.Patch:
 			patchCount++
 		}
 
@@ -172,11 +172,10 @@ func promptUpdateDependency(
 	dependency string,
 	currentVersion string,
 	latestVersion string,
-	versionType version.UpgradeType,
+	versionType versionpkg.UpgradeType,
 	updateProgressCount int,
 	maxUpdateProgress int,
 	isDevDependency bool,
-	versionPrefix string,
 ) (string, error) {
 
 	isDevDependencyText := ""
@@ -326,7 +325,7 @@ func readDependencies(
 		}
 
 		// Get version and prefix
-		versionPrefix, cleanCurrentVersion := version.GetCleanVersion(currentVersion)
+		versionPrefix, cleanCurrentVersion := versionpkg.GetCleanVersion(currentVersion)
 
 		if cleanCurrentVersion == "" {
 			fmt.Println(packageName, " has unsupported/invalid version, skipping...")
@@ -356,9 +355,22 @@ func readDependencies(
 			json.NewDecoder(resp.Body).Decode(&result)
 
 			distTags := result["dist-tags"].(map[string]interface{})
-			homepage, _ := result["homepage"].(string)
-			repository := result["repository"].(map[string]interface{})
-			repositoryUrl := repositorypkg.GetRepositoryUrl(repository["url"].(string))
+
+			var homepage string
+			if value, ok := result["homepage"]; ok {
+				homepage = value.(string)
+			}
+
+			// homepage, _ := result["homepage"].(string)
+
+			var repositoryUrl string
+			if value, ok := result["repository"]; ok {
+				repository := value.(map[string]interface{})["url"].(string)
+				repositoryUrl = repositorypkg.GetRepositoryUrl(repository)
+			}
+
+			// repository := result["repository"].(map[string]interface{})
+			// repositoryUrl := repositorypkg.GetRepositoryUrl(repository["url"].(string))
 
 			// Get latest version from distTags
 			var latestVersion string
@@ -500,17 +512,13 @@ func Init(cfg npm.CmdFlags) {
 
 			}
 
-			response, err := promptUpdateDependency(
-				updatePackageOptions,
+			response := cli.PromptUpdateDependency(
 				key,
 				value.Current,
 				value.Latest,
 				value.VersionType,
-				updateProgressCount,
-				totalCount,
-				value.IsDev,
-				value.VersionPrefix,
 			)
+
 			updateProgressCount++
 
 			if err != nil {
@@ -520,6 +528,14 @@ func Init(cfg npm.CmdFlags) {
 			}
 
 			if response == updatePackageOptions.skip {
+				// Skipped dependencyName in green color
+				fmt.Println(
+					aurora.Sprintf(
+						aurora.Faint("Skipped \"%s\""),
+						key,
+					),
+				)
+
 				break
 			}
 
@@ -550,6 +566,19 @@ func Init(cfg npm.CmdFlags) {
 					entry.ShouldUpdate = true      // then modify the copy
 					versionComparison[key] = entry // then reassign map entry
 				}
+
+				colorizedVersion := colorizeVersion(value.Latest, value.VersionType)
+
+				fmt.Println(
+					aurora.Sprintf(
+						"%s \"%s\" from %s to %s",
+						aurora.Green("Updated"),
+						key,
+						value.Current,
+						colorizedVersion,
+					),
+				)
+
 				break
 			}
 

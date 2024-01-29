@@ -30,11 +30,12 @@ up-npm [flags]
 
 | Flag              	| Description                                   				|
 |---------------------	|-------------------------------------------------------------  |
-| -d, --dev           	| Include dev dependencies                      				|
+| --no-dev           	| Exclude dev dependencies. Default `false`.   					|
 | -f, --filter `string` | Filter dependencies by package name           				|
-| --allow-downgrade     | Allows downgrading a if latest version is older than current 	|
-| -h, --help          	| Display help information for up-npm           				|
-| -v, --version       	| Display the version number for up-npm         				|
+| --allow-downgrade     | Allows downgrading a if latest version is older than current.	|
+| --file `string`     	| Default `package.json`.										|
+| -h, --help          	| Display help information for up-npm.           				|
+| -v, --version       	| Display the version number for up-npm.         				|
 
 
 
@@ -44,13 +45,15 @@ up-npm [flags]
 # Update dependencies
 npm-up
 
-# Including dev dependencies
-npm-up --dev
-npm-up -d
+# Excluding dev dependencies
+npm-up --no-dev
 
 # Update only packages containing "lint"
 npm-up -filter lint
 npm-up -f lint
+
+# Update some specific .json
+npm-up --file my-project/package.json
 
 ```
 
