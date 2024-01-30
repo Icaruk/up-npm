@@ -6,9 +6,7 @@ import (
 	"log"
 	"os"
 	"os/exec"
-	"regexp"
 	"runtime"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -36,27 +34,6 @@ type PackageJSON struct {
 	DevDependencies map[string]string `json:"devDependencies"`
 }
 
-func colorizeVersion(version string, versionType versionpkg.UpgradeType) string {
-	vLatestMajor, vLatestMinor, vLatestPatch := getVersionComponents(version)
-
-	var colorizedVersion string
-
-	if versionType == versionpkg.Major {
-		colorizedVersion = aurora.Sprintf(
-			aurora.Red("%d.%d.%d"),
-			aurora.Red(vLatestMajor),
-			aurora.Red(vLatestMinor),
-			aurora.Red(vLatestPatch),
-		)
-	} else if versionType == versionpkg.Minor {
-		colorizedVersion = aurora.Sprintf(aurora.White("%d.%d.%d"), aurora.White(vLatestMajor), aurora.Yellow(vLatestMinor), aurora.Yellow(vLatestPatch))
-	} else if versionType == versionpkg.Patch {
-		colorizedVersion = aurora.Sprintf(aurora.White("%d.%d.%d"), aurora.White(vLatestMajor), aurora.White(vLatestMinor), aurora.Green(vLatestPatch))
-	}
-
-	return colorizedVersion
-}
-
 func printUpdateProgress(current int, max int) string {
 	return fmt.Sprintf(
 		"(%d/%d)",
@@ -72,7 +49,7 @@ func printUpdatablePackagesTable(versionComparison map[string]versionpkg.Version
 
 	// Add rows
 	for key, value := range versionComparison {
-		latestColorized := colorizeVersion(value.Latest, value.VersionType)
+		latestColorized := versionpkg.ColorizeVersion(value.Latest, value.VersionType)
 		t.AppendRow(table.Row{key, value.Current, latestColorized}, table.RowConfig{AutoMergeAlign: text.AlignRight})
 	}
 
@@ -120,16 +97,6 @@ func printSummary(totalCount int, majorCount int, minorCount int, patchCount int
 
 	fmt.Println(baseSt)
 
-}
-
-func getVersionComponents(semver string) (int, int, int) {
-	re := regexp.MustCompile(`(\d+)\.(\d+)\.(\d+)`)
-	matches := re.FindStringSubmatch(semver)
-	vCurrentMajor, _ := strconv.Atoi(matches[1])
-	vCurrentMinor, _ := strconv.Atoi(matches[2])
-	vCurrentPatch, _ := strconv.Atoi(matches[3])
-
-	return vCurrentMajor, vCurrentMinor, vCurrentPatch
 }
 
 func countVersionTypes(
@@ -193,7 +160,7 @@ func promptUpdateDependency(
 			dependency,
 			isDevDependencyText,
 			currentVersion,
-			colorizeVersion(latestVersion, versionType),
+			versionpkg.ColorizeVersion(latestVersion, versionType),
 		),
 		Help: "Use arrow keys to navigate",
 		Options: []string{
@@ -567,7 +534,7 @@ func Init(cfg npm.CmdFlags) {
 					versionComparison[key] = entry // then reassign map entry
 				}
 
-				colorizedVersion := colorizeVersion(value.Latest, value.VersionType)
+				colorizedVersion := versionpkg.ColorizeVersion(value.Latest, value.VersionType)
 
 				fmt.Println(
 					aurora.Sprintf(

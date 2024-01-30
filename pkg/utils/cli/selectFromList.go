@@ -40,7 +40,7 @@ func PromptUpdateDependency(
 						"Update \"%s\" from %s to %s?",
 						dependencyName,
 						versionFrom,
-						versionTo,
+						versionpkg.ColorizeVersion(versionTo, versionType),
 					),
 				),
 		).

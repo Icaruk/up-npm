@@ -10,6 +10,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
+const __VERSION__ string = "5.1.2"
+
 var Cfg = npm.CmdFlags{
 	NoDev:          false,
 	AllowDowngrade: false,
@@ -71,9 +73,6 @@ var rootCmd = &cobra.Command{
 			File:           file,
 		}
 
-		// Cfg.NoDev = noDevFlag
-		// Cfg.AllowDowngrade = noDevFlag
-
 		updater.Init(Cfg)
 
 		return nil
@@ -125,20 +124,7 @@ func init() {
 
 	rootCmd.AddCommand(whereCmd)
 
-	binaryPath, err := os.Executable()
-	if err != nil {
-		fmt.Println(err)
-	}
-
-	localVersionPath := filepath.Join(filepath.Dir(binaryPath), "../.version")
-
-	localVersion := "3.1.5"
-	localVersionByte, err := os.ReadFile(localVersionPath)
-	if err == nil {
-		localVersion = string(localVersionByte)
-	}
-
-	rootCmd.Version = string(localVersion)
+	rootCmd.Version = string(__VERSION__)
 }
 
 func Execute() {
