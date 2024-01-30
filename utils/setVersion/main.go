@@ -69,5 +69,5 @@ func main() {
 	}
 	writer.Flush()
 
-	fmt.Println("Versión actualizada con éxito.")
+	fmt.Println("Version updated sucessfully from ", filePath)
 }

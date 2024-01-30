@@ -13,12 +13,12 @@ vars:
 tasks:
   build:
     cmds:
+      - task: setVetsion
       - echo "Building version {{.VERSION}}"
       - CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -ldflags="-s -w" -trimpath -tags=netgo -o {{.DIST_FOLDER}}/{{.APPNAME}}-{{.VERSION}}-windows-amd64.exe
       - CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -ldflags="-s -w" -trimpath -tags=netgo -o {{.DIST_FOLDER}}/{{.APPNAME}}-{{.VERSION}}-darwin-amd64
       - CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -trimpath -tags=netgo -o {{.DIST_FOLDER}}/{{.APPNAME}}-{{.VERSION}}-linux-amd64
       - echo "Build complete"
-      - task: setVetsion
       - task: checksum
     silent: false
     
