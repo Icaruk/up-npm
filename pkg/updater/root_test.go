@@ -57,7 +57,7 @@ func TestGetVersionComponents(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			major, minor, patch := getVersionComponents(tc.semver)
+			major, minor, patch := version.GetVersionComponents(tc.semver)
 			if major != tc.expectedMajor || minor != tc.expectedMinor || patch != tc.expectedPatch {
 				t.Errorf("Expected %v.%v.%v but got %v.%v.%v for %v", tc.expectedMajor, tc.expectedMinor, tc.expectedPatch, major, minor, patch, tc.semver)
 			}

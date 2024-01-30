@@ -34,6 +34,7 @@ func PromptUpdateDependency(
 	selectForm := huh.NewSelect[string]().
 		Title(
 			lipgloss.NewStyle().
+				Foreground(lipgloss.Color("7")). // white
 				PaddingTop(1).
 				Render(
 					fmt.Sprintf(
