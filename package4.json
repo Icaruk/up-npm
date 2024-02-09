@@ -1,0 +1,62 @@
+{
+	"name": "redacted",
+	"version": "12.2.180",
+	"description": "redacted",
+	"main": "app.js",
+	"author": "redacted",
+	"license": "ISC",
+	"engines": {
+		"node": "20.5.0"
+	},
+	"dependencies": {
+		"@adobe/pdfservices-node-sdk": "^3.4.2",
+		"@aws-sdk/client-s3": "^3.490.0",
+		"@aws-sdk/lib-storage": "^3.490.0",
+		"@logtail/node": "^0.4.19",
+		"@newrelic/native-metrics": "^10.0.1",
+		"@shakers/storage": "^1.0.9",
+		"aws-sdk": "^2.1536.0",
+		"axios": "^1.6.5",
+		"bcrypt": "^5.1.1",
+		"cors": "^2.8.5",
+		"date-fns": "^3.2.0",
+		"ejs": "^3.1.9",
+		"express": "^4.18.2",
+		"form-data": "^4.0.0",
+		"google-auth-library": "^9.4.2",
+		"googleapis": "^130.0.0",
+		"image-thumbnail": "^1.0.15",
+		"jsonwebtoken": "^9.0.2",
+		"mongodb": "^6.3.0",
+		"multer": "^1.4.5-lts.1",
+		"nanoid": "3.3.4",
+		"newrelic": "^11.9.0",
+		"node-cache": "^5.1.2",
+		"node-cron": "^3.0.3",
+		"open-graph-scraper": "^6.3.2",
+		"pdf-lib": "^1.17.1",
+		"pdfjs-dist": "3.10.111",
+		"puppeteer": "^21.7.0",
+		"slugify": "^1.6.6",
+		"winston": "^3.11.0",
+		"xss": "^1.0.14"
+	},
+	"devDependencies": {
+		"colorette": "^2.0.20",
+		"eslint": "^8.56.0",
+		"eslint-config-prettier": "^9.1.0",
+		"eslint-config-standard": "^17.1.0",
+		"eslint-plugin-import": "^2.29.1",
+		"eslint-plugin-n": "^16.6.2",
+		"eslint-plugin-promise": "^6.1.1",
+		"husky": "^8.0.3",
+		"jest": "^29.7.0",
+		"lint-staged": "^15.2.0",
+		"nodemon": "^3.0.2",
+		"prettier": "3.2.2",
+		"sass": "^1.69.7"
+	},
+	"volta": {
+		"node": "20.5.0"
+	}
+}

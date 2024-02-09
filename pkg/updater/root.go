@@ -34,14 +34,6 @@ type PackageJSON struct {
 	DevDependencies map[string]string `json:"devDependencies"`
 }
 
-func printUpdateProgress(current int, max int) string {
-	return fmt.Sprintf(
-		"(%d/%d)",
-		current,
-		max,
-	)
-}
-
 func printUpdatablePackagesTable(versionComparison map[string]versionpkg.VersionComparisonItem) {
 	t := table.NewWriter()
 	t.SetOutputMirror(os.Stdout)
@@ -132,47 +124,6 @@ type writeJsonOptions struct {
 	yes        string
 	yes_backup string
 	no         string
-}
-
-func promptUpdateDependency(
-	options updatePackageOptions,
-	dependency string,
-	currentVersion string,
-	latestVersion string,
-	versionType versionpkg.UpgradeType,
-	updateProgressCount int,
-	maxUpdateProgress int,
-	isDevDependency bool,
-) (string, error) {
-
-	isDevDependencyText := ""
-	if isDevDependency {
-		isDevDependencyText = aurora.Sprintf(
-			aurora.Magenta(" (devDependency)"),
-		)
-	}
-
-	response := ""
-	prompt := &survey.Select{
-		Message: fmt.Sprintf(
-			"%s Update \"%s\"%s from %s to %s?",
-			printUpdateProgress(updateProgressCount, maxUpdateProgress),
-			dependency,
-			isDevDependencyText,
-			currentVersion,
-			versionpkg.ColorizeVersion(latestVersion, versionType),
-		),
-		Help: "Use arrow keys to navigate",
-		Options: []string{
-			options.update,
-			options.skip,
-			options.show_changes,
-			options.finish,
-		},
-	}
-	err := survey.AskOne(prompt, &response)
-
-	return response, err
 }
 
 func promptWriteJson(options writeJsonOptions, file string) (string, error) {
@@ -312,10 +263,15 @@ func readDependencies(
 			resp, err := npm.FetchNpmRegistry(dependency)
 			if err != nil {
 				fmt.Println("Failed to fetch", dependency, " from npm registry, skipping...")
-				resultsChan <- "" // Enviar un resultado vacío para que se tenga en cuenta en la cuenta de resultados
+				resultsChan <- "" // Enviar un resultado vacío para que se tenga en cuenta en el recuento de resultados
 				return
 			}
 			defer resp.Body.Close()
+
+			if resp.StatusCode != 200 {
+				// Failed to fetch
+				return
+			}
 
 			// Get response data
 			var result map[string]interface{}
@@ -620,6 +576,11 @@ func Init(cfg npm.CmdFlags) {
 			dependenciesKeyName := "dependencies"
 			if value.IsDev {
 				dependenciesKeyName = "devDependencies"
+			}
+
+			// If key includes a dor `.` replace with `\.`
+			if strings.Contains(key, ".") {
+				key = strings.ReplaceAll(key, ".", `\.`)
 			}
 
 			dotPath := fmt.Sprintf("%s.%s", dependenciesKeyName, key)

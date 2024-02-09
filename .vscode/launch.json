@@ -18,7 +18,7 @@
       "mode": "auto",
       "program": "main.go",
       "args": [
-        "--file=package2.json"
+        "--file=package3.json"
       ]
     }
   ]
