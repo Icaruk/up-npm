@@ -13,7 +13,8 @@ vars:
 tasks:
   build:
     cmds:
-      - task: setVetsion
+      - task: prepareDistFolder
+      - task: setVersion
       - echo "Building version {{.VERSION}}"
       - CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -ldflags="-s -w" -trimpath -tags=netgo -o {{.DIST_FOLDER}}/{{.APPNAME}}-{{.VERSION}}-windows-amd64.exe
       - CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -ldflags="-s -w" -trimpath -tags=netgo -o {{.DIST_FOLDER}}/{{.APPNAME}}-{{.VERSION}}-darwin-amd64
@@ -27,7 +28,12 @@ tasks:
       - go run ./utils/checksum.go
     silent: false
     
-  setVetsion:
+  prepareDistFolder:
+    cmds:
+      - go run ./utils/cleanFolder/main.go -path dist
+    silent: false
+    
+  setVersion:
     cmds:
       - go run ./utils/setVersion/main.go --version {{.VERSION}}
     silent: false
