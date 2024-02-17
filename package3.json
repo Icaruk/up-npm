@@ -9,8 +9,8 @@
 		"node": "20.5.0"
 	},
 	"dependencies": {
-		"socket.io": "^4.7.4",
-		"@shakers/storage": "^1.0.9"
+		"a": "^3.0.0",
+		"aws-sdk": "^2.1400.0"
 	},
 	"volta": {
 		"node": "20.5.0"

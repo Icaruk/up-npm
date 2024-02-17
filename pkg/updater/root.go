@@ -284,16 +284,11 @@ func readDependencies(
 				homepage = value.(string)
 			}
 
-			// homepage, _ := result["homepage"].(string)
-
 			var repositoryUrl string
 			if value, ok := result["repository"]; ok {
 				repository := value.(map[string]interface{})["url"].(string)
 				repositoryUrl = repositorypkg.GetRepositoryUrl(repository)
 			}
-
-			// repository := result["repository"].(map[string]interface{})
-			// repositoryUrl := repositorypkg.GetRepositoryUrl(repository["url"].(string))
 
 			// Get latest version from distTags
 			var latestVersion string
@@ -463,11 +458,37 @@ func Init(cfg npm.CmdFlags) {
 			}
 
 			if response == updatePackageOptions.show_changes {
-				// Open browser url
+
+				// Get user and repository from repository URL
+				urlMetadata := repositorypkg.GetRepositoryUrlMetadata(value.RepositoryUrl)
+
+				// Fetch repository from github
+				// _, err := repositorypkg.FetchRepositoryLatestRelease(urlMetadata.Username, urlMetadata.RepositoryName)
+				// missingLatestRelease := err != nil
+
+				missingLatestRelease := true
+
+				var changelogMdUrl string
+
+				if missingLatestRelease {
+					fmt.Println(aurora.Faint("Could not find latest release from github"))
+
+					// Fetch CHANGELOG.md
+					response, err := repositorypkg.FetchRepositoryChangelogFile(urlMetadata.Username, urlMetadata.RepositoryName)
+
+					if err == nil {
+						changelogMdUrl = response["html_url"].(string)
+					} else {
+						fmt.Println(aurora.Faint("Could not find CHANGELOG.md"))
+					}
+				}
+
 				var url string
 
-				if value.RepositoryUrl != "" {
+				if !missingLatestRelease {
 					url = value.RepositoryUrl + "/releases" + "#:~:text=" + value.Current
+				} else if changelogMdUrl != "" {
+					url = changelogMdUrl
 				} else {
 					url = value.Homepage
 				}
