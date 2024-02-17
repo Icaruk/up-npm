@@ -49,13 +49,13 @@ func TestGetRepositoryUrlMetadata(t *testing.T) {
 		t.Run(tc.url, func(t *testing.T) {
 			urlMetadata := GetRepositoryUrlMetadata(tc.url)
 
-			if urlMetadata.username != tc.expectedUsername || urlMetadata.repositoryName != tc.expectedRepositoryName {
+			if urlMetadata.Username != tc.expectedUsername || urlMetadata.RepositoryName != tc.expectedRepositoryName {
 				t.Errorf(
 					"expectedUsername %v and expectedRepositoryName %v but got %v and %v for %v",
 					tc.expectedUsername,
 					tc.expectedRepositoryName,
-					urlMetadata.username,
-					urlMetadata.repositoryName,
+					urlMetadata.Username,
+					urlMetadata.RepositoryName,
 					tc.url,
 				)
 			}
