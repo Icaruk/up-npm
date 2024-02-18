@@ -11,8 +11,13 @@ vars:
     sh: 'Powershell.exe -File getPackageVersion.ps1'
     
 tasks:
+  test: 
+    cmds: 
+      - go test ./...
+
   build:
     cmds:
+      - task: test
       - task: prepareDistFolder
       - task: setVersion
       - echo "Building version {{.VERSION}}"

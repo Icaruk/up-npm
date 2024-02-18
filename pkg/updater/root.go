@@ -39,10 +39,25 @@ func printUpdatablePackagesTable(versionComparison map[string]versionpkg.Version
 	t.SetOutputMirror(os.Stdout)
 	t.AppendHeader(table.Row{"Package", "Current", "Latest"})
 
+	t.SetColumnConfigs(([]table.ColumnConfig{
+		{
+			Name:  "Package",
+			Align: text.AlignLeft,
+		},
+		{
+			Name:  "Current",
+			Align: text.AlignRight,
+		},
+		{
+			Name:  "Latest",
+			Align: text.AlignRight,
+		},
+	}))
+
 	// Add rows
 	for key, value := range versionComparison {
 		latestColorized := versionpkg.ColorizeVersion(value.Latest, value.VersionType)
-		t.AppendRow(table.Row{key, value.Current, latestColorized}, table.RowConfig{AutoMergeAlign: text.AlignRight})
+		t.AppendRow(table.Row{key, value.Current, latestColorized})
 	}
 
 	t.Render()
@@ -348,11 +363,10 @@ func Init(cfg npm.CmdFlags) {
 	versionComparison := map[string]versionpkg.VersionComparisonItem{}
 
 	// Progress bar
-	maxBar := len(dependencies)
-	bar := initProgressBar(maxBar)
+	totalDependencyCount := len(dependencies) + len(devDependencies)
+	bar := initProgressBar(totalDependencyCount)
 
 	// Process dependencies
-	dependencyCount := len(dependencies)
 	readDependencies(dependencies, versionComparison, false, bar, cfg.Filter)
 
 	// Process devDependencies
@@ -361,7 +375,7 @@ func Init(cfg npm.CmdFlags) {
 	}
 
 	// Count total dependencies and filtered dependencies
-	filteredDependencyCount := dependencyCount
+	filteredDependencyCount := totalDependencyCount
 	if isFilterFilled {
 		filteredDependencyCount = len(versionComparison)
 	}
@@ -384,7 +398,7 @@ func Init(cfg npm.CmdFlags) {
 
 	// Print summary line (1 major, 1 minor, 1 patch)
 	if isFilterFilled {
-		fmt.Println("Filtered", aurora.Blue(filteredDependencyCount), "dependencies from a total of", aurora.Blue(dependencyCount))
+		fmt.Println("Filtered", aurora.Blue(filteredDependencyCount), "dependencies from a total of", aurora.Blue(totalDependencyCount))
 	} else {
 		fmt.Println("Total dependencies: ", aurora.Cyan(filteredDependencyCount))
 	}
@@ -463,10 +477,8 @@ func Init(cfg npm.CmdFlags) {
 				urlMetadata := repositorypkg.GetRepositoryUrlMetadata(value.RepositoryUrl)
 
 				// Fetch repository from github
-				// _, err := repositorypkg.FetchRepositoryLatestRelease(urlMetadata.Username, urlMetadata.RepositoryName)
-				// missingLatestRelease := err != nil
-
-				missingLatestRelease := true
+				_, err := repositorypkg.FetchRepositoryLatestRelease(urlMetadata.Username, urlMetadata.RepositoryName)
+				missingLatestRelease := err != nil
 
 				var changelogMdUrl string
 
