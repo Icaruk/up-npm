@@ -352,9 +352,41 @@ func readDependencies(
 	return lockedDependencyCount
 }
 
-func Init(cfg npm.CmdFlags) {
+func Init(cfg npm.CmdFlags, binVersion string) {
 
 	var isFilterFilled bool = cfg.Filter != ""
+
+	// New version message
+	latestRelease, err := repositorypkg.FetchRepositoryLatestRelease("icaruk", "up-npm")
+
+	if err == nil {
+
+		latestReleaseVersion := latestRelease["tag_name"].(string)
+
+		_, upgradeDirection := versionpkg.GetVersionUpdateType(binVersion, latestReleaseVersion)
+
+		if upgradeDirection == versionpkg.UpgradeDirection(UpgradeDirectionUpgrade) {
+
+			fmt.Println(
+				aurora.Sprintf(
+					aurora.BrightGreen("Update: up-npm %s is available!"),
+					aurora.Green(latestReleaseVersion),
+				),
+				aurora.Sprintf(
+					aurora.Faint("(current version is %s)"),
+					aurora.Faint(binVersion),
+				),
+			)
+			// fmt.Println(aurora.Sprintf(aurora.Faint("Current version in %s"), aurora.Faint(binVersion)))
+			fmt.Println(
+				"Click",
+				aurora.Blue("here").Hyperlink("https://github.com/Icaruk/up-npm/releases/latest"),
+				"to check the latest changes.",
+			)
+			fmt.Println()
+		}
+		return
+	}
 
 	fmt.Println()
 

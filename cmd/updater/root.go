@@ -73,7 +73,7 @@ var rootCmd = &cobra.Command{
 			File:           file,
 		}
 
-		updater.Init(Cfg)
+		updater.Init(Cfg, __VERSION__)
 
 		return nil
 	},
