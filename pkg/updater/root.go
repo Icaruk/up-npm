@@ -237,7 +237,7 @@ func readDependencies(
 	isDev bool,
 	bar *progressbar.ProgressBar,
 	filter string,
-) {
+) (lockedDependencyCount int) {
 
 	var wg sync.WaitGroup
 	semaphoreChan := make(chan struct{}, concurrencyLimit)
@@ -262,6 +262,12 @@ func readDependencies(
 
 		if cleanCurrentVersion == "" {
 			fmt.Println(packageName, " has unsupported/invalid version, skipping...")
+			continue
+		}
+
+		if versionPrefix == "" {
+			fmt.Printf(" is locked to version %s, skipping...", cleanCurrentVersion)
+			lockedDependencyCount++
 			continue
 		}
 
@@ -343,7 +349,7 @@ func readDependencies(
 	// Wait for all goroutines to complete
 	wg.Wait()
 	close(doneChan)
-
+	return lockedDependencyCount
 }
 
 func Init(cfg npm.CmdFlags) {
@@ -367,11 +373,14 @@ func Init(cfg npm.CmdFlags) {
 	bar := initProgressBar(totalDependencyCount)
 
 	// Process dependencies
-	readDependencies(dependencies, versionComparison, false, bar, cfg.Filter)
+	var lockedDependencyCount int
+	var lockedDevDependencyCount int
+
+	lockedDependencyCount = readDependencies(dependencies, versionComparison, false, bar, cfg.Filter)
 
 	// Process devDependencies
 	if !cfg.NoDev {
-		readDependencies(devDependencies, versionComparison, true, bar, cfg.Filter)
+		lockedDevDependencyCount = readDependencies(devDependencies, versionComparison, true, bar, cfg.Filter)
 	}
 
 	// Count total dependencies and filtered dependencies
@@ -401,6 +410,12 @@ func Init(cfg npm.CmdFlags) {
 		fmt.Println("Filtered", aurora.Blue(filteredDependencyCount), "dependencies from a total of", aurora.Blue(totalDependencyCount))
 	} else {
 		fmt.Println("Total dependencies: ", aurora.Cyan(filteredDependencyCount))
+
+		totalLockedDependencyCount := lockedDependencyCount + lockedDevDependencyCount
+		if totalLockedDependencyCount > 0 {
+			s := fmt.Sprintf("Locked dependencies: %d", totalLockedDependencyCount)
+			fmt.Println(aurora.Faint(s))
+		}
 	}
 
 	printSummary(totalCount, majorCount, minorCount, patchCount)
@@ -421,28 +436,6 @@ func Init(cfg npm.CmdFlags) {
 		exit := false
 
 		for {
-
-			if value.VersionPrefix == "" {
-				isDevDependencyText := ""
-				if value.IsDev {
-					isDevDependencyText = aurora.Sprintf(
-						aurora.Magenta(" (devDependency)"),
-					)
-				}
-
-				message := aurora.Sprintf(
-					aurora.Yellow("Upgrade ignored because package \"%s\"%s is locked to version %s"),
-					key,
-					isDevDependencyText,
-					value.Current,
-				)
-
-				fmt.Println(message)
-
-				updateProgressCount++
-				break
-
-			}
 
 			response := cli.PromptUpdateDependency(
 				key,
