@@ -367,6 +367,8 @@ func Init(cfg npm.CmdFlags, binVersion string) {
 
 		if upgradeDirection == versionpkg.UpgradeDirection(UpgradeDirectionUpgrade) {
 
+			fmt.Println()
+
 			fmt.Println(
 				aurora.Sprintf(
 					aurora.BrightGreen("Update: up-npm %s is available!"),
@@ -383,9 +385,8 @@ func Init(cfg npm.CmdFlags, binVersion string) {
 				aurora.Blue("here").Hyperlink("https://github.com/Icaruk/up-npm/releases/latest"),
 				"to check the latest changes.",
 			)
-			fmt.Println()
 		}
-		return
+
 	}
 
 	fmt.Println()
