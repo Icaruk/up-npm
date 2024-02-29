@@ -499,6 +499,11 @@ func Init(cfg npm.CmdFlags, binVersion string) {
 
 			if response == updatePackageOptions.show_changes {
 
+				if value.RepositoryUrl == "" {
+					fmt.Println(aurora.Red("Repository URL does not exist"))
+					continue
+				}
+
 				// Get user and repository from repository URL
 				urlMetadata := repositorypkg.GetRepositoryUrlMetadata(value.RepositoryUrl)
 
@@ -509,7 +514,7 @@ func Init(cfg npm.CmdFlags, binVersion string) {
 				var changelogMdUrl string
 
 				if missingLatestRelease {
-					fmt.Println(aurora.Faint("Could not find latest release from github"))
+					fmt.Println(aurora.Faint("Latest release from github does not exist"))
 
 					// Fetch CHANGELOG.md
 					response, err := repositorypkg.FetchRepositoryChangelogFile(urlMetadata.Username, urlMetadata.RepositoryName)
@@ -517,7 +522,7 @@ func Init(cfg npm.CmdFlags, binVersion string) {
 					if err == nil {
 						changelogMdUrl = response["html_url"].(string)
 					} else {
-						fmt.Println(aurora.Faint("Could not find CHANGELOG.md"))
+						fmt.Println(aurora.Faint("CHANGELOG.md does not exist"))
 					}
 				}
 
@@ -533,7 +538,7 @@ func Init(cfg npm.CmdFlags, binVersion string) {
 
 				if url == "" {
 					fmt.Println(aurora.Yellow("No repository or homepage URL found"))
-					break
+					continue
 				}
 
 				fmt.Println("Opening...")
