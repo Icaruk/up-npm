@@ -49,7 +49,7 @@ npm-up
 npm-up --no-dev
 
 # Update only packages containing "lint"
-npm-up -filter lint
+npm-up --filter lint
 npm-up -f lint
 
 # Update some specific .json
