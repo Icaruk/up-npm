@@ -1,6 +1,6 @@
 {
 	"name": "up-npm",
-	"version": "4.3.1",
+	"version": "4.4.0",
 	"author": "Icaruk",
 	"scripts": {
 		"postinstall": "node ./scripts/setup.js"
