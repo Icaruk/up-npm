@@ -30,11 +30,12 @@ up-npm [flags]
 
 | Flag              	| Description                                   				|
 |---------------------	|-------------------------------------------------------------  |
-| --no-dev           	| Exclude dev dependencies. Default `false`.   					|
-| -f, --filter `string` | Filter dependencies by package name           				|
+| -h, --help          	| Display help information for up-npm.           				|
 | --allow-downgrade     | Allows downgrading a if latest version is older than current.	|
 | --file `string`     	| Default `package.json`.										|
-| -h, --help          	| Display help information for up-npm.           				|
+| -f, --filter `string` | Filter dependencies by package name           				|
+| --no-dev           	| Exclude dev dependencies. Default `false`.   					|
+| --update-patches     	| Update patch versions automatically. Default `false`.  		|
 | -v, --version       	| Display the version number for up-npm.         				|
 
 
