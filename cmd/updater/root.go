@@ -17,6 +17,7 @@ var Cfg = npm.CmdFlags{
 	AllowDowngrade: false,
 	Filter:         "",
 	File:           "",
+	UpdatePatches:  false,
 }
 
 type Flag struct {
@@ -37,6 +38,9 @@ var AllowedFlags = map[string]Flag{
 	},
 	"file": {
 		Long: "file",
+	},
+	"updatePatches": {
+		Long: "update-patches",
 	},
 }
 
@@ -66,11 +70,17 @@ var rootCmd = &cobra.Command{
 			return err
 		}
 
+		updatePatches, err := cmd.Flags().GetBool(AllowedFlags["updatePatches"].Long)
+		if err != nil {
+			return err
+		}
+
 		Cfg = npm.CmdFlags{
 			NoDev:          noDevFlag,
 			Filter:         filterFlag,
 			AllowDowngrade: allowDowngradeFlag,
 			File:           file,
+			UpdatePatches:  updatePatches,
 		}
 
 		updater.Init(Cfg, __VERSION__)
@@ -120,6 +130,12 @@ func init() {
 		AllowedFlags["file"].Long,
 		"package.json",
 		"File dependencies by package name",
+	)
+	rootCmd.Flags().BoolVar(
+		&Cfg.UpdatePatches,
+		AllowedFlags["updatePatches"].Long,
+		false,
+		"Update patch versions automatically without confirmation",
 	)
 
 	rootCmd.AddCommand(whereCmd)

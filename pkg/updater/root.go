@@ -1,14 +1,10 @@
 package updater
 
 import (
-	"encoding/json"
 	"fmt"
 	"log"
 	"os"
-	"os/exec"
-	"runtime"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/icaruk/up-npm/pkg/utils/cli"
@@ -106,28 +102,6 @@ func printSummary(totalCount int, majorCount int, minorCount int, patchCount int
 
 }
 
-func countVersionTypes(
-	versionComparison map[string]versionpkg.VersionComparisonItem,
-) (
-	majorCount int, minorCount int, patchCount int, totalCount int,
-) {
-	for _, value := range versionComparison {
-
-		switch value.VersionType {
-		case versionpkg.Major:
-			majorCount++
-		case versionpkg.Minor:
-			minorCount++
-		case versionpkg.Patch:
-			patchCount++
-		}
-
-		totalCount++
-	}
-
-	return
-}
-
 type updatePackageOptions struct {
 	update       string
 	skip         string
@@ -209,149 +183,6 @@ func createPackageJsonBackup(file string) (bool, error) {
 	return true, nil
 }
 
-// https://gist.github.com/hyg/9c4afcd91fe24316cbf0
-func Openbrowser(url string) {
-	var err error
-
-	switch runtime.GOOS {
-	case "linux":
-		err = exec.Command("xdg-open", url).Start()
-	case "windows":
-		err = exec.Command("rundll32", "url.dll,FileProtocolHandler", url).Start()
-	case "darwin":
-		err = exec.Command("open", url).Start()
-	default:
-		err = fmt.Errorf("unsupported platform")
-	}
-	if err != nil {
-		log.Fatal(err)
-	}
-
-}
-
-const concurrencyLimit int = 10
-
-func readDependencies(
-	dependencyList map[string]string,
-	targetMap map[string]versionpkg.VersionComparisonItem,
-	isDev bool,
-	bar *progressbar.ProgressBar,
-	filter string,
-) (lockedDependencyCount int) {
-
-	var wg sync.WaitGroup
-	semaphoreChan := make(chan struct{}, concurrencyLimit)
-	resultsChan := make(chan string, len(dependencyList))
-	doneChan := make(chan struct{})
-
-	defer func() {
-		close(semaphoreChan)
-	}()
-
-	for packageName, currentVersion := range dependencyList {
-
-		// Check filter
-		if filter != "" {
-			if !strings.Contains(packageName, filter) {
-				continue
-			}
-		}
-
-		// Get version and prefix
-		versionPrefix, cleanCurrentVersion := versionpkg.GetCleanVersion(currentVersion)
-
-		if cleanCurrentVersion == "" {
-			fmt.Println(packageName, " has unsupported/invalid version, skipping...")
-			continue
-		}
-
-		if versionPrefix == "" {
-			fmt.Printf(" is locked to version %s, skipping...", cleanCurrentVersion)
-			lockedDependencyCount++
-			continue
-		}
-
-		wg.Add(1)
-
-		go func(dependency string, currentVersion string) {
-			defer func() {
-				wg.Done()
-				<-semaphoreChan
-			}()
-			semaphoreChan <- struct{}{}
-
-			// Perform get request to npm registry
-			resp, err := npm.FetchNpmRegistry(dependency)
-			if err != nil {
-				fmt.Println("Failed to fetch", dependency, " from npm registry, skipping...")
-				resultsChan <- "" // Enviar un resultado vacío para que se tenga en cuenta en el recuento de resultados
-				return
-			}
-			defer resp.Body.Close()
-
-			if resp.StatusCode != 200 {
-				// Failed to fetch
-				return
-			}
-
-			// Get response data
-			var result map[string]interface{}
-			json.NewDecoder(resp.Body).Decode(&result)
-
-			distTags := result["dist-tags"].(map[string]interface{})
-
-			var homepage string
-			if value, ok := result["homepage"]; ok {
-				homepage = value.(string)
-			}
-
-			var repositoryUrl string
-			if value, ok := result["repository"]; ok {
-				repository := value.(map[string]interface{})["url"].(string)
-				repositoryUrl = repositorypkg.GetRepositoryUrl(repository)
-			}
-
-			// Get latest version from distTags
-			var latestVersion string
-			for key := range distTags {
-				if key == "latest" {
-					latestVersion = distTags[key].(string)
-				}
-			}
-
-			// Get version update type (major, minor, patch, none)
-			upgradeType, upgradeDirection := versionpkg.GetVersionUpdateType(cleanCurrentVersion, latestVersion)
-
-			// Save data
-			if upgradeDirection == versionpkg.Upgrade {
-				targetMap[dependency] = versionpkg.VersionComparisonItem{
-					Current:       cleanCurrentVersion,
-					Latest:        latestVersion,
-					VersionType:   upgradeType,
-					ShouldUpdate:  false,
-					Homepage:      homepage,
-					RepositoryUrl: repositoryUrl,
-					VersionPrefix: versionPrefix,
-					IsDev:         isDev,
-				}
-			}
-
-			resultsChan <- ""
-
-			if bar != nil {
-				bar.Add(1)
-			}
-
-		}(packageName, currentVersion)
-
-	}
-
-	// Wait for all goroutines to complete
-	wg.Wait()
-	close(doneChan)
-	return lockedDependencyCount
-}
-
 func Init(cfg npm.CmdFlags, binVersion string) {
 
 	var isFilterFilled bool = cfg.Filter != ""
@@ -409,11 +240,11 @@ func Init(cfg npm.CmdFlags, binVersion string) {
 	var lockedDependencyCount int
 	var lockedDevDependencyCount int
 
-	lockedDependencyCount = readDependencies(dependencies, versionComparison, false, bar, cfg.Filter)
+	lockedDependencyCount = npm.ReadDependencies(dependencies, versionComparison, false, bar, cfg)
 
 	// Process devDependencies
 	if !cfg.NoDev {
-		lockedDevDependencyCount = readDependencies(devDependencies, versionComparison, true, bar, cfg.Filter)
+		lockedDevDependencyCount = npm.ReadDependencies(devDependencies, versionComparison, true, bar, cfg)
 	}
 
 	// Count total dependencies and filtered dependencies
@@ -423,7 +254,7 @@ func Init(cfg npm.CmdFlags, binVersion string) {
 	}
 
 	// Count version types
-	majorCount, minorCount, patchCount, totalCount := countVersionTypes(versionComparison)
+	majorCount, minorCount, patchCount, totalCount := versionpkg.CountVersionTypes(versionComparison)
 	if filteredDependencyCount == 0 {
 		fmt.Println()
 		fmt.Println()
@@ -470,6 +301,31 @@ func Init(cfg npm.CmdFlags, binVersion string) {
 
 		for {
 
+			if cfg.UpdatePatches {
+
+				if value.VersionType == versionpkg.Patch {
+					// get a copy of the entry
+					if entry, ok := versionComparison[key]; ok {
+						entry.ShouldUpdate = true      // then modify the copy
+						versionComparison[key] = entry // then reassign map entry
+					}
+
+					colorizedVersion := versionpkg.ColorizeVersion(value.Latest, value.VersionType)
+
+					fmt.Println(
+						aurora.Sprintf(
+							"%s \"%s\" from %s to %s",
+							aurora.Green("Automatically updated"),
+							key,
+							value.Current,
+							colorizedVersion,
+						),
+					)
+
+					break
+				}
+			}
+
 			response := cli.PromptUpdateDependency(
 				key,
 				value.Current,
@@ -478,12 +334,6 @@ func Init(cfg npm.CmdFlags, binVersion string) {
 			)
 
 			updateProgressCount++
-
-			if err != nil {
-				if err == terminal.InterruptErr {
-					log.Fatal("interrupted")
-				}
-			}
 
 			if response == updatePackageOptions.skip {
 				// Skipped dependencyName in green color
@@ -543,7 +393,7 @@ func Init(cfg npm.CmdFlags, binVersion string) {
 
 				fmt.Println("Opening...")
 				fmt.Println()
-				Openbrowser(url)
+				cli.Openbrowser(url)
 
 			}
 

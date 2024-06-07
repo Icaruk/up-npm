@@ -17,28 +17,18 @@ type CmdFlags struct {
 	AllowDowngrade bool
 	Filter         string
 	File           string
-}
-
-type VersionComparisonItem struct {
-	current       string
-	latest        string
-	versionType   version.UpgradeType
-	shouldUpdate  bool
-	homepage      string
-	repositoryUrl string
-	versionPrefix string
-	isDev         bool
+	UpdatePatches  bool
 }
 
 const concurrencyLimit int = 10
 
 func ReadDependencies(
 	dependencyList map[string]string,
-	targetMap map[string]VersionComparisonItem,
+	targetMap map[string]version.VersionComparisonItem,
 	isDev bool,
 	bar *progressbar.ProgressBar,
 	cfg CmdFlags,
-) {
+) (lockedDependencyCount int) {
 
 	var wg sync.WaitGroup
 	semaphoreChan := make(chan struct{}, concurrencyLimit)
@@ -119,15 +109,15 @@ func ReadDependencies(
 			// Save data
 			if (upgradeDirection == version.Upgrade) ||
 				(cfg.AllowDowngrade && upgradeDirection == version.Downgrade) {
-				targetMap[dependency] = VersionComparisonItem{
-					current:       cleanCurrentVersion,
-					latest:        latestVersion,
-					versionType:   upgradeType,
-					shouldUpdate:  false,
-					homepage:      homepage,
-					repositoryUrl: repositoryUrl,
-					versionPrefix: versionPrefix,
-					isDev:         isDev,
+				targetMap[dependency] = version.VersionComparisonItem{
+					Current:       cleanCurrentVersion,
+					Latest:        latestVersion,
+					VersionType:   upgradeType,
+					ShouldUpdate:  false,
+					Homepage:      homepage,
+					RepositoryUrl: repositoryUrl,
+					VersionPrefix: versionPrefix,
+					IsDev:         isDev,
 				}
 			}
 
@@ -144,5 +134,7 @@ func ReadDependencies(
 	// Wait for all goroutines to complete
 	wg.Wait()
 	close(doneChan)
+
+	return lockedDependencyCount
 
 }
