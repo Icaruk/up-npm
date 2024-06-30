@@ -5,6 +5,7 @@
 		"@aws-sdk/lib-storage": "^3.592.0"
 	},
 	"devDependencies": {
+		"@shakers/entities": "0.0.0",
 		"@logtail/node": "^0.4.20",
 		"aws-sdk": "^1.1329.0"
 	}

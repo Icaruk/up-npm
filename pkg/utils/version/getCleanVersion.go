@@ -3,6 +3,11 @@ package version
 import "regexp"
 
 func GetCleanVersion(version string) (string, string) {
+
+	if version == "" {
+		return "", ""
+	}
+
 	re := regexp.MustCompile(`([^0-9]*)(\d+\.\d+\.\d+)(.*)`)
 	reSubmatch := re.FindStringSubmatch(version)
 

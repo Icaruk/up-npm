@@ -79,12 +79,5 @@ func GetDependenciesFromPackageJson(packageJsonFilename string, preventDevDepend
 		return nil, nil, nil, errors.New(errStr)
 	}
 
-	/* if !preventDevDependencies {
-		// Merge devDependencies with dependencies
-		for key, value := range devDependencies {
-			dependencies[key] = value
-		}
-	} */
-
 	return dependencies, devDependencies, jsonFile, nil
 }

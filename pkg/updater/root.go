@@ -9,6 +9,7 @@ import (
 
 	"github.com/icaruk/up-npm/pkg/utils/cli"
 	npm "github.com/icaruk/up-npm/pkg/utils/npm"
+	"github.com/icaruk/up-npm/pkg/utils/npmrc"
 	packagejson "github.com/icaruk/up-npm/pkg/utils/packagejson"
 	repositorypkg "github.com/icaruk/up-npm/pkg/utils/repository"
 	versionpkg "github.com/icaruk/up-npm/pkg/utils/version"
@@ -187,7 +188,7 @@ func Init(cfg npm.CmdFlags, binVersion string) {
 
 	var isFilterFilled bool = cfg.Filter != ""
 
-	// New version message
+	// Check new version
 	latestRelease, err := repositorypkg.FetchRepositoryLatestRelease("icaruk", "up-npm")
 
 	if err == nil {
@@ -222,6 +223,22 @@ func Init(cfg npm.CmdFlags, binVersion string) {
 
 	fmt.Println()
 
+	// Check .npmrc
+	npmrcFiles, _ := npmrc.GetNpmrcTokens()
+	token, npmrcTokenLevel := npmrc.GetRelevantNpmrcToken(npmrcFiles)
+
+	if token != "" {
+
+		fmt.Println(
+			aurora.Green(".npmrc").Hyperlink("https://docs.npmjs.com/cli/v10/configuring-npm/npmrc"),
+			aurora.Green("has been detected"),
+			aurora.Faint(fmt.Sprintf("(%s)", npmrcTokenLevel)),
+		)
+
+		fmt.Println()
+
+	}
+
 	dependencies, devDependencies, jsonFile, err := packagejson.GetDependenciesFromPackageJson(cfg.File, cfg.NoDev)
 
 	if err != nil {
@@ -240,11 +257,11 @@ func Init(cfg npm.CmdFlags, binVersion string) {
 	var lockedDependencyCount int
 	var lockedDevDependencyCount int
 
-	lockedDependencyCount = npm.ReadDependencies(dependencies, versionComparison, false, bar, cfg)
+	lockedDependencyCount = npm.FetchDependencies(dependencies, versionComparison, false, token, bar, cfg)
 
 	// Process devDependencies
 	if !cfg.NoDev {
-		lockedDevDependencyCount = npm.ReadDependencies(devDependencies, versionComparison, true, bar, cfg)
+		lockedDevDependencyCount = npm.FetchDependencies(devDependencies, versionComparison, true, token, bar, cfg)
 	}
 
 	// Count total dependencies and filtered dependencies

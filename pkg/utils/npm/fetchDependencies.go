@@ -1,7 +1,6 @@
 package npm
 
 import (
-	"encoding/json"
 	"fmt"
 	"strings"
 	"sync"
@@ -22,10 +21,11 @@ type CmdFlags struct {
 
 const concurrencyLimit int = 10
 
-func ReadDependencies(
+func FetchDependencies(
 	dependencyList map[string]string,
 	targetMap map[string]version.VersionComparisonItem,
 	isDev bool,
+	token string,
 	bar *progressbar.ProgressBar,
 	cfg CmdFlags,
 ) (lockedDependencyCount int) {
@@ -66,28 +66,23 @@ func ReadDependencies(
 			semaphoreChan <- struct{}{}
 
 			// Perform get request to npm registry
-			resp, err := FetchNpmRegistry(dependency)
+			body, err := FetchNpmRegistry(dependency, token)
 			if err != nil {
 				fmt.Println("Failed to fetch", dependency, " from npm registry, skipping...")
 				resultsChan <- "" // Enviar un resultado vacío para que se tenga en cuenta en la cuenta de resultados
 				return
 			}
-			defer resp.Body.Close()
 
-			// Get response data
-			var result map[string]interface{}
-			json.NewDecoder(resp.Body).Decode(&result)
-
-			distTags := result["dist-tags"].(map[string]interface{})
+			distTags := body["dist-tags"].(map[string]interface{})
 
 			var homepage string
-			if result["homepage"] != nil {
-				homepage = result["homepage"].(string)
+			if body["homepage"] != nil {
+				homepage = body["homepage"].(string)
 			}
 
 			var repositoryData map[string]interface{}
-			if result["repository"] != nil {
-				repositoryData = result["repository"].(map[string]interface{})
+			if body["repository"] != nil {
+				repositoryData = body["repository"].(map[string]interface{})
 			}
 
 			var repositoryUrl string
