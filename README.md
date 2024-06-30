@@ -12,7 +12,7 @@ CLI tool written in Go to review and update your NPM dependencies, easy and fast
 - 📃 Review the **release notes** for each package to see "what's new" before deciding whether to update.
 - 🦘 Selectively **skip** updates for specific packages.
 - 🛡️ **Back up** your `package.json` file before updating, ensuring you always have a fallback option if something goes wrong.
-- Limited support for `.npmrc` ([read more here](#npmrc-support))
+- Supports .npmrc `_authToken` ([read more here](#npmrc-support))
 
 
 # Usage
@@ -79,9 +79,12 @@ npm-up --file my-project/package.json
 
 *from https://docs.npmjs.com/cli/v10/configuring-npm/npmrc*
 
+Detects `_authToken` inside .npmrc file.
 The four relevant files are:
 
 - (✅ supported) per-project config file (/path/to/my/project/.npmrc)
 - (✅ supported) per-user config file (~/.npmrc)
 - (❌ unsupported) global config file ($PREFIX/etc/npmrc)
 - (❌ unsupported) npm builtin config file (/path/to/npm/npmrc)
+
+This feature allows to fetch private packages.
