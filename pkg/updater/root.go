@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"os/exec"
 	"strings"
 	"time"
 
@@ -540,7 +541,30 @@ func Init(cfg npm.CmdFlags, binVersion string) {
 
 	fmt.Println()
 
-	fmt.Println("Run 'npm install' to install dependencies")
-	fmt.Println()
+	packageManager := packagejson.GetPackageManager()
+	installationCommand := packagejson.GetInstallationCommand(packageManager)
+
+	installPromptMessage := fmt.Sprintf("Run '%s' to install dependencies?", installationCommand)
+	response, err = cli.PromptYesNo(installPromptMessage)
+
+	if err != nil {
+		if err == terminal.InterruptErr {
+			fmt.Println("")
+		}
+	}
+
+	if response == cli.YesNoPromptOptions.Yes {
+		// Execute command
+		cmd := exec.Command("npm", "install")
+
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+
+		if err := cmd.Run(); err != nil {
+			fmt.Println(err)
+		}
+
+		return
+	}
 
 }
