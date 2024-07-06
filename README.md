@@ -6,6 +6,8 @@ CLI tool written in Go to review and update your NPM dependencies, easy and fast
 
 [![built with Codeium](https://codeium.com/badges/main)](https://codeium.com)
 
+
+
 # Features
 
 - 🔍 **Easily identify the update type** for each package, whether it's a patch, minor, or major update.
@@ -13,6 +15,15 @@ CLI tool written in Go to review and update your NPM dependencies, easy and fast
 - 🦘 Selectively **skip** updates for specific packages.
 - 🛡️ **Back up** your `package.json` file before updating, ensuring you always have a fallback option if something goes wrong.
 - Supports .npmrc `_authToken` ([read more here](#npmrc-support))
+
+
+
+# Installation
+
+```
+npm install -g up-npm
+```
+
 
 
 # Usage
@@ -57,6 +68,16 @@ npm-up -f lint
 # Update some specific .json
 npm-up --file my-project/package.json
 
+```
+
+
+
+# How to upgrade version
+
+![image](https://github.com/Icaruk/up-npm/assets/10779469/80aa603c-af4e-4f68-8ed3-a754d8b366c1)
+
+```
+npm install -g up-npm
 ```
 
 
