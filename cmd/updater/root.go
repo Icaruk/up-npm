@@ -10,7 +10,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-const __VERSION__ string = "4.6.2"
+const __VERSION__ string = "4.6.3"
 
 var Cfg = npm.CmdFlags{
 	NoDev:          false,
@@ -135,7 +135,7 @@ func init() {
 		&Cfg.UpdatePatches,
 		AllowedFlags["updatePatches"].Long,
 		false,
-		"Update patch versions automatically without confirmation",
+		"Auto update patch versions without confirmation",
 	)
 
 	rootCmd.AddCommand(whereCmd)

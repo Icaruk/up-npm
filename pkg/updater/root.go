@@ -333,7 +333,7 @@ func Init(cfg npm.CmdFlags, binVersion string) {
 					fmt.Println(
 						aurora.Sprintf(
 							"%s \"%s\" from %s to %s",
-							aurora.Green("Automatically updated"),
+							aurora.Green("Auto updated"),
 							key,
 							value.Current,
 							colorizedVersion,
