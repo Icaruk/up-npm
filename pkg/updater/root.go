@@ -554,8 +554,15 @@ func Init(cfg npm.CmdFlags, binVersion string) {
 	}
 
 	if response == cli.YesNoPromptOptions.Yes {
+		fmt.Printf("Running '%s'...", installationCommand)
+
+		// Split command and args
+		commandAndArgs := strings.Split(installationCommand, " ")
+		command := commandAndArgs[0]
+		args := commandAndArgs[1:]
+
 		// Execute command
-		cmd := exec.Command("npm", "install")
+		cmd := exec.Command(command, args...)
 
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
