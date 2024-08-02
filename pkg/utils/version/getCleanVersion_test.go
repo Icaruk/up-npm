@@ -35,6 +35,16 @@ func TestGetCleanVersion(t *testing.T) {
 			expectedPrefix:  "^",
 			expectedVersion: "1.2.3",
 		},
+		{
+			version:         "^1",
+			expectedPrefix:  "^",
+			expectedVersion: "1.0.0",
+		},
+		{
+			version:         "^1.2",
+			expectedPrefix:  "^",
+			expectedVersion: "1.2.0",
+		},
 	}
 
 	for _, tc := range testCases {
