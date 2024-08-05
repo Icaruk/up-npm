@@ -10,7 +10,7 @@ func GetCleanVersion(version string) (string, string) {
 		return "", ""
 	}
 
-	re := regexp.MustCompile(`([^0-9]*)(\d?)\.?(\d?)\.?(\d?)(.*)`)
+	re := regexp.MustCompile(`([^0-9]*)(\d*)\.?(\d*)\.?(\d*)(.*)`)
 	reSubmatch := re.FindStringSubmatch(version) // [0] all, [1] = prefix, [2] = major, [3] = minor, [4] = patch
 
 	prefix := reSubmatch[1]

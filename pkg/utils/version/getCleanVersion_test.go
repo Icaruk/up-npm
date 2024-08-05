@@ -36,6 +36,11 @@ func TestGetCleanVersion(t *testing.T) {
 			expectedVersion: "1.2.3",
 		},
 		{
+			version:         "^15.0.0-canary.102",
+			expectedPrefix:  "^",
+			expectedVersion: "15.0.0",
+		},
+		{
 			version:         "^1",
 			expectedPrefix:  "^",
 			expectedVersion: "1.0.0",
@@ -44,6 +49,16 @@ func TestGetCleanVersion(t *testing.T) {
 			version:         "^1.2",
 			expectedPrefix:  "^",
 			expectedVersion: "1.2.0",
+		},
+		{
+			version:         "12.34.56",
+			expectedPrefix:  "",
+			expectedVersion: "12.34.56",
+		},
+		{
+			version:         "123.3456",
+			expectedPrefix:  "",
+			expectedVersion: "123.3456.0",
 		},
 	}
 
