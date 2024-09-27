@@ -31,6 +31,7 @@ func FetchDependencies(
 ) (lockedDependencyCount int) {
 
 	var wg sync.WaitGroup
+	var mutex sync.Mutex // to protect targetMap access
 	semaphoreChan := make(chan struct{}, concurrencyLimit)
 	resultsChan := make(chan string, len(dependencyList))
 	doneChan := make(chan struct{})
@@ -68,7 +69,7 @@ func FetchDependencies(
 			// Perform get request to npm registry
 			body, err := FetchNpmRegistry(dependency, token)
 			if err != nil {
-				fmt.Println("Failed to fetch", dependency, " from npm registry, skipping...")
+				fmt.Println("Failed to fetch", dependency, "from npm registry, skipping...")
 				resultsChan <- "" // Enviar un resultado vacío para que se tenga en cuenta en la cuenta de resultados
 				return
 			}
@@ -104,6 +105,7 @@ func FetchDependencies(
 			// Save data
 			if (upgradeDirection == version.Upgrade) ||
 				(cfg.AllowDowngrade && upgradeDirection == version.Downgrade) {
+				mutex.Lock()
 				targetMap[dependency] = version.VersionComparisonItem{
 					Current:       cleanCurrentVersion,
 					Latest:        latestVersion,
@@ -114,6 +116,7 @@ func FetchDependencies(
 					VersionPrefix: versionPrefix,
 					IsDev:         isDev,
 				}
+				mutex.Unlock()
 			}
 
 			resultsChan <- ""
