@@ -6,6 +6,7 @@ import (
 	"github.com/charmbracelet/huh"
 	"github.com/charmbracelet/lipgloss"
 	versionpkg "github.com/icaruk/up-npm/pkg/utils/version"
+	"github.com/logrusorgru/aurora/v4"
 )
 
 type SelectUpdateOptions struct {
@@ -24,14 +25,18 @@ var SelectUpdateAvailableOptions = SelectUpdateOptions{
 
 func PromptUpdateDependency(
 	dependencyName string,
-	versionFrom string,
-	versionTo string,
-	versionType versionpkg.UpgradeType,
+	versionComparisonItem versionpkg.VersionComparisonItem,
 	currentCount int,
 	maxCount int,
 ) string {
 
 	var selected string
+
+	lockedVersionWarning := ""
+
+	if versionComparisonItem.VersionPrefix == "" {
+		lockedVersionWarning = aurora.Sprintf("\n%s", aurora.Faint("version is locked"))
+	}
 
 	selectForm := huh.NewSelect[string]().
 		Title(
@@ -40,12 +45,13 @@ func PromptUpdateDependency(
 				PaddingTop(1).
 				Render(
 					fmt.Sprintf(
-						"[%d/%d] Update \"%s\" from %s to %s?",
+						"[%d/%d] Update \"%s\" from %s to %s?%s",
 						currentCount,
 						maxCount,
 						dependencyName,
-						versionFrom,
-						versionpkg.ColorizeVersion(versionTo, versionType),
+						versionComparisonItem.Current,
+						versionpkg.ColorizeVersion(versionComparisonItem.Latest, versionComparisonItem.VersionType),
+						lockedVersionWarning,
 					),
 				),
 		).
