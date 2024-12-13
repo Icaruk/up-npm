@@ -27,6 +27,8 @@ func PromptUpdateDependency(
 	versionFrom string,
 	versionTo string,
 	versionType versionpkg.UpgradeType,
+	currentCount int,
+	maxCount int,
 ) string {
 
 	var selected string
@@ -38,7 +40,9 @@ func PromptUpdateDependency(
 				PaddingTop(1).
 				Render(
 					fmt.Sprintf(
-						"Update \"%s\" from %s to %s?",
+						"[%d/%d] Update \"%s\" from %s to %s?",
+						currentCount,
+						maxCount,
 						dependencyName,
 						versionFrom,
 						versionpkg.ColorizeVersion(versionTo, versionType),

@@ -311,7 +311,8 @@ func Init(cfg npm.CmdFlags, binVersion string) {
 		finish:       "Finish",
 	}
 
-	updateProgressCount := 1
+	currentUpdateCount := 1
+	maxUpdateCount := len(versionComparison)
 
 	for key, value := range versionComparison {
 
@@ -349,9 +350,9 @@ func Init(cfg npm.CmdFlags, binVersion string) {
 				value.Current,
 				value.Latest,
 				value.VersionType,
+				currentUpdateCount,
+				maxUpdateCount,
 			)
-
-			updateProgressCount++
 
 			if response == updatePackageOptions.skip {
 				// Skipped dependencyName in green color
@@ -361,6 +362,8 @@ func Init(cfg npm.CmdFlags, binVersion string) {
 						key,
 					),
 				)
+
+				currentUpdateCount++
 
 				break
 			}
@@ -433,6 +436,8 @@ func Init(cfg npm.CmdFlags, binVersion string) {
 						colorizedVersion,
 					),
 				)
+
+				currentUpdateCount++
 
 				break
 			}
