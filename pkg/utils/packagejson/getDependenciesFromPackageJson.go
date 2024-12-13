@@ -18,7 +18,15 @@ type PackageJSON struct {
 	DevDependencies map[string]string `json:"devDependencies"`
 }
 
-func GetDependenciesFromPackageJson(packageJsonFilename string, preventDevDependencies bool) (dependencies map[string]string, devDependencies map[string]string, jsonFile []byte, err error) {
+func GetDependenciesFromPackageJson(
+	packageJsonFilename string,
+	preventDevDependencies bool,
+) (
+	dependencies map[string]string,
+	devDependencies map[string]string,
+	jsonFile []byte,
+	err error,
+) {
 
 	// Read json file
 	jsonFile, err = os.ReadFile(packageJsonFilename)

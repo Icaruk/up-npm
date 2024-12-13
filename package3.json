@@ -9,7 +9,8 @@
 		"node": "20.5.0"
 	},
 	"dependencies": {
-		"surrealdb.js": "^0.11.1"
+		"dame": "^0.11.1",
+		"axios": "0.11.1"
 	},
 	"volta": {
 		"node": "20.5.0"

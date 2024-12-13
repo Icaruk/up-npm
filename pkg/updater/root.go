@@ -347,9 +347,7 @@ func Init(cfg npm.CmdFlags, binVersion string) {
 
 			response := cli.PromptUpdateDependency(
 				key,
-				value.Current,
-				value.Latest,
-				value.VersionType,
+				value,
 				currentUpdateCount,
 				maxUpdateCount,
 			)
