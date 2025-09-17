@@ -2,8 +2,10 @@ package npm
 
 import (
 	"fmt"
+	"math"
 	"strings"
 	"sync"
+	"time"
 
 	repositorypkg "github.com/icaruk/up-npm/pkg/utils/repository"
 	"github.com/icaruk/up-npm/pkg/utils/version"
@@ -74,16 +76,16 @@ func FetchDependencies(
 				return
 			}
 
-			distTags := body["dist-tags"].(map[string]interface{})
+			distTags := body["dist-tags"].(map[string]any)
 
 			var homepage string
 			if body["homepage"] != nil {
 				homepage = body["homepage"].(string)
 			}
 
-			var repositoryData map[string]interface{}
+			var repositoryData map[string]any
 			if body["repository"] != nil {
-				repositoryData = body["repository"].(map[string]interface{})
+				repositoryData = body["repository"].(map[string]any)
 			}
 
 			var repositoryUrl string
@@ -99,6 +101,30 @@ func FetchDependencies(
 				}
 			}
 
+			// Get latest version inside time
+			versionTimes := body["time"].(map[string]any)
+			var latestReleaseDate string
+
+			for key := range versionTimes {
+				if key == latestVersion {
+					latestReleaseDate = versionTimes[key].(string)
+				}
+			}
+
+			hoursSinceLasRelease := -1.0
+
+			// Parse ISOstring to date
+			latestReleaseDateParsed, err := time.Parse(time.RFC3339, latestReleaseDate)
+			if err != nil {
+				fmt.Println("Failed to parse latest release date for", dependency, "skipping...")
+			}
+
+			// Get difference in hours
+			hoursSinceLasRelease = time.Since(latestReleaseDateParsed).Hours()
+
+			// Round to 2 decimals
+			hoursSinceLasRelease = math.Round(hoursSinceLasRelease*10) / 10
+
 			// Get version update type (major, minor, patch, none)
 			upgradeType, upgradeDirection := version.GetVersionUpdateType(cleanCurrentVersion, latestVersion)
 
@@ -107,14 +133,15 @@ func FetchDependencies(
 				(cfg.AllowDowngrade && upgradeDirection == version.Downgrade) {
 				mutex.Lock()
 				targetMap[dependency] = version.VersionComparisonItem{
-					Current:       cleanCurrentVersion,
-					Latest:        latestVersion,
-					VersionType:   upgradeType,
-					ShouldUpdate:  false,
-					Homepage:      homepage,
-					RepositoryUrl: repositoryUrl,
-					VersionPrefix: versionPrefix,
-					IsDev:         isDev,
+					Current:              cleanCurrentVersion,
+					Latest:               latestVersion,
+					VersionType:          upgradeType,
+					ShouldUpdate:         false,
+					Homepage:             homepage,
+					RepositoryUrl:        repositoryUrl,
+					VersionPrefix:        versionPrefix,
+					IsDev:                isDev,
+					HoursSinceLasRelease: hoursSinceLasRelease,
 				}
 				mutex.Unlock()
 			}

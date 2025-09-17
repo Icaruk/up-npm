@@ -1,18 +1,18 @@
 # https://taskfile.dev
 
-version: '3'
+version: "3"
 
 vars:
   DIST_FOLDER: "dist"
   APPNAME: "up-npm"
   VERSION:
     # 3.1.2
-    # sh: '{{if eq OS "windows"}}more .version{{else}}cat .version{{end}}'
-    sh: 'Powershell.exe -File getPackageVersion.ps1'
-    
+    sh: '{{if eq OS "windows"}}Powershell.exe -File getPackageVersion.ps1{{else}}./getPackageVersion.sh{{end}}'
+    # sh: 'Powershell.exe -File getPackageVersion.ps1'
+
 tasks:
-  test: 
-    cmds: 
+  test:
+    cmds:
       - go test ./...
 
   build:
@@ -27,17 +27,17 @@ tasks:
       - echo "Build complete"
       - task: checksum
     silent: false
-    
+
   checksum:
     cmds:
       - go run ./utils/checksum.go
     silent: false
-    
+
   prepareDistFolder:
     cmds:
       - go run ./utils/cleanFolder/main.go -path dist
     silent: false
-    
+
   setVersion:
     cmds:
       - go run ./utils/setVersion/main.go --version {{.VERSION}}

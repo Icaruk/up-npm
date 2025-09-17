@@ -33,9 +33,20 @@ func PromptUpdateDependency(
 	var selected string
 
 	lockedVersionWarning := ""
+	tooRecentReleaseWarning := ""
 
 	if versionComparisonItem.VersionPrefix == "" {
 		lockedVersionWarning = aurora.Sprintf("\n%s", aurora.Faint("version is locked"))
+	}
+
+	if versionComparisonItem.HoursSinceLasRelease > 0 && versionComparisonItem.HoursSinceLasRelease < 24 {
+		tooRecentReleaseWarning = aurora.Sprintf(
+			"\n%s%s %g %s",
+			aurora.Bold(aurora.Red("WARNING: ")),
+			aurora.Red("has been released"),
+			aurora.Yellow(versionComparisonItem.HoursSinceLasRelease),
+			aurora.Red("hours ago!"),
+		)
 	}
 
 	selectForm := huh.NewSelect[string]().
@@ -45,13 +56,14 @@ func PromptUpdateDependency(
 				PaddingTop(1).
 				Render(
 					fmt.Sprintf(
-						"[%d/%d] Update \"%s\" from %s to %s?%s",
+						"[%d/%d] Update \"%s\" from %s to %s?%s%s",
 						currentCount,
 						maxCount,
 						dependencyName,
 						versionComparisonItem.Current,
 						versionpkg.ColorizeVersion(versionComparisonItem.Latest, versionComparisonItem.VersionType),
 						lockedVersionWarning,
+						tooRecentReleaseWarning,
 					),
 				),
 		).
