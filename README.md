@@ -13,8 +13,8 @@ CLI tool written in Go to review and update your NPM dependencies, easy and fast
 - 📃 Review the **release notes** for each package to see "what's new" before deciding whether to update.
 - 🦘 Selectively **skip** updates for specific packages.
 - 🛡️ **Back up** your `package.json` file before updating, ensuring you always have a fallback option if something goes wrong.
-- Supports .npmrc `_authToken` ([read more here](#npmrc-support))
-
+- 🔑 Supports .npmrc `_authToken` ([read more here](#npmrc-support))
+- 🐞 Warns about versions released too recently
 
 
 # Installation
