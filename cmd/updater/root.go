@@ -10,7 +10,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-const __VERSION__ string = "4.8.0"
+const __VERSION__ string = "4.9.0"
 
 var Cfg = npm.CmdFlags{
 	NoDev:          false,
