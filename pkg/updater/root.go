@@ -32,11 +32,10 @@ type PackageJSON struct {
 	DevDependencies map[string]string `json:"devDependencies"`
 }
 
-func printUpdatablePackagesTable(versionComparison map[string]versionpkg.VersionComparisonItem) {
+func printUpdatablePackagesTable(packages []versionpkg.PackageVersion) {
 	t := table.NewWriter()
 	t.SetOutputMirror(os.Stdout)
 	t.AppendHeader(table.Row{"Package", "Current", "Latest"})
-
 	t.SetColumnConfigs(([]table.ColumnConfig{
 		{
 			Name:  "Package",
@@ -51,11 +50,10 @@ func printUpdatablePackagesTable(versionComparison map[string]versionpkg.Version
 			Align: text.AlignRight,
 		},
 	}))
-
 	// Add rows
-	for key, value := range versionComparison {
-		latestColorized := versionpkg.ColorizeVersion(value.Latest, value.VersionType)
-		t.AppendRow(table.Row{key, value.Current, latestColorized})
+	for _, pkg := range packages {
+		latestColorized := versionpkg.ColorizeVersion(pkg.Latest, pkg.VersionType)
+		t.AppendRow(table.Row{pkg.Name, pkg.Current, latestColorized})
 	}
 
 	t.Render()
@@ -273,6 +271,9 @@ func Init(cfg npm.CmdFlags, binVersion string) {
 
 	// Count version types
 	majorCount, minorCount, patchCount, totalCount := versionpkg.CountVersionTypes(versionComparison)
+
+	// Sort packages by version type
+	sortedPackages := versionpkg.SortPackagesByVersionType(versionComparison)
 	if filteredDependencyCount == 0 {
 		fmt.Println()
 		fmt.Println()
@@ -280,11 +281,10 @@ func Init(cfg npm.CmdFlags, binVersion string) {
 		fmt.Println()
 		return
 	}
-
 	// Table
 	fmt.Println("")
 	fmt.Println("")
-	printUpdatablePackagesTable(versionComparison)
+	printUpdatablePackagesTable(sortedPackages)
 	fmt.Println("")
 
 	// Print summary line (1 major, 1 minor, 1 patch)
@@ -301,6 +301,7 @@ func Init(cfg npm.CmdFlags, binVersion string) {
 	}
 
 	printSummary(totalCount, majorCount, minorCount, patchCount)
+
 	fmt.Println()
 
 	// Prompt user to update each dependency
@@ -314,14 +315,16 @@ func Init(cfg npm.CmdFlags, binVersion string) {
 	currentUpdateCount := 1
 	maxUpdateCount := len(versionComparison)
 
-	for key, value := range versionComparison {
+	for _, pkg := range sortedPackages {
+
+		key := pkg.Name
+		value := pkg.VersionComparisonItem
 
 		exit := false
 
 		for {
 
 			if cfg.UpdatePatches {
-
 				if value.VersionType == versionpkg.Patch {
 					// get a copy of the entry
 					if entry, ok := versionComparison[key]; ok {
@@ -330,7 +333,6 @@ func Init(cfg npm.CmdFlags, binVersion string) {
 					}
 
 					colorizedVersion := versionpkg.ColorizeVersion(value.Latest, value.VersionType)
-
 					fmt.Println(
 						aurora.Sprintf(
 							"%s \"%s\" from %s to %s",
@@ -344,14 +346,12 @@ func Init(cfg npm.CmdFlags, binVersion string) {
 					break
 				}
 			}
-
 			response := cli.PromptUpdateDependency(
 				key,
 				value,
 				currentUpdateCount,
 				maxUpdateCount,
 			)
-
 			if response == updatePackageOptions.skip {
 				// Skipped dependencyName in green color
 				fmt.Println(
