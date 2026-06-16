@@ -4,7 +4,7 @@ CLI tool written in Go to review and update your NPM dependencies, easy and fast
 
 ![](https://i.imgur.com/8AUJFVb.png)
 
-[![built with Codeium](https://codeium.com/badges/main)](https://codeium.com)
+![](https://img.shields.io/badge/up--npm-%20?style=flat&logo=rocket&logoColor=rgb(56%2C%20167%2C%20205)&label=updated%20with&color=rgb(74%2C%20100%2C%20206)&link=https%3A%2F%2Fgithub.com%2FIcaruk%2Fup-npm)
 
 
 # Features
