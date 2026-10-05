@@ -14,7 +14,7 @@ CLI tool written in Go to review and update your NPM dependencies, easy and fast
 - 🦘 Selectively **skip** updates for specific packages.
 - 🛡️ **Back up** your `package.json` file before updating, ensuring you always have a fallback option if something goes wrong.
 - 🔑 Supports .npmrc `_authToken` ([read more here](#npmrc-support))
-- 🐞 Warns about versions released too recently
+- 🐞 Warns about versions released too recently.
 
 
 # Installation
@@ -22,7 +22,6 @@ CLI tool written in Go to review and update your NPM dependencies, easy and fast
 ```
 npm install -g up-npm
 ```
-
 
 
 # Usage
@@ -55,17 +54,16 @@ up-npm [flags]
 
 ```bash
 # Update dependencies
-npm-up
-
+up-npm
 # Excluding dev dependencies
-npm-up --no-dev
+up-npm --no-dev
 
 # Update only packages containing "lint"
-npm-up --filter lint
-npm-up -f lint
+up-npm --filter lint
+up-npm -f lint
 
 # Update some specific .json
-npm-up --file my-project/package.json
+up-npm --file my-project/package.json
 
 ```
 
