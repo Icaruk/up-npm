@@ -35,6 +35,7 @@ type PackageJSON struct {
 func printUpdatablePackagesTable(packages []versionpkg.PackageVersion) {
 	t := table.NewWriter()
 	t.SetOutputMirror(os.Stdout)
+	t.SetStyle(table.StyleRounded)
 	t.AppendHeader(table.Row{"Package", "Current", "Latest"})
 	t.SetColumnConfigs(([]table.ColumnConfig{
 		{
@@ -58,6 +59,50 @@ func printUpdatablePackagesTable(packages []versionpkg.PackageVersion) {
 
 	t.Render()
 
+}
+
+func printReport(packages []versionpkg.PackageVersion) {
+	for _, versionType := range []versionpkg.UpgradeType{versionpkg.Major, versionpkg.Minor, versionpkg.Patch} {
+		var group []versionpkg.PackageVersion
+		for _, pkg := range packages {
+			if pkg.VersionType == versionType {
+				group = append(group, pkg)
+			}
+		}
+		if len(group) == 0 {
+			continue
+		}
+
+		label := strings.ToUpper(string(versionType[:1])) + string(versionType[1:])
+
+		t := table.NewWriter()
+		t.SetOutputMirror(os.Stdout)
+		t.SetStyle(table.StyleRounded)
+		t.Style().Title.Format = text.FormatDefault
+		t.SetTitle(fmt.Sprintf("%s updates: %d", label, len(group)))
+		t.AppendHeader(table.Row{"Package", "Current", "Latest"})
+		t.SetColumnConfigs(([]table.ColumnConfig{
+			{
+				Name:  "Package",
+				Align: text.AlignLeft,
+			},
+			{
+				Name:  "Current",
+				Align: text.AlignRight,
+			},
+			{
+				Name:  "Latest",
+				Align: text.AlignRight,
+			},
+		}))
+		for _, pkg := range group {
+			latestColorized := versionpkg.ColorizeVersion(pkg.Latest, pkg.VersionType)
+			t.AppendRow(table.Row{pkg.Name, pkg.Current, latestColorized})
+		}
+		t.Render()
+
+		fmt.Println()
+	}
 }
 
 func printSummary(totalCount int, majorCount int, minorCount int, patchCount int) {
@@ -573,8 +618,27 @@ func Init(cfg npm.CmdFlags, binVersion string) {
 		if err := cmd.Run(); err != nil {
 			fmt.Println(err)
 		}
+	}
 
+	// Report
+	response, err = cli.PromptYesNo("Generate report?")
+
+	if err != nil {
 		return
+	}
+
+	if response == cli.YesNoPromptOptions.Yes {
+		fmt.Println()
+		// Re-sort from the map: sortedPackages is a stale snapshot from before
+		// the prompt loop set ShouldUpdate on the map entries
+		sortedUpdated := versionpkg.SortPackagesByVersionType(versionComparison)
+		var updatedPackages []versionpkg.PackageVersion
+		for _, pkg := range sortedUpdated {
+			if pkg.ShouldUpdate {
+				updatedPackages = append(updatedPackages, pkg)
+			}
+		}
+		printReport(updatedPackages)
 	}
 
 }

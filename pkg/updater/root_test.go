@@ -1,10 +1,41 @@
 package updater
 
 import (
+	"io"
+	"os"
+	"strings"
 	"testing"
 
 	"github.com/icaruk/up-npm/pkg/utils/version"
 )
+
+func TestPrintReport(t *testing.T) {
+	packages := []version.PackageVersion{
+		{Name: "pkg-b", VersionComparisonItem: version.VersionComparisonItem{Current: "1.0.0", Latest: "2.0.0", VersionType: version.Major}},
+		{Name: "pkg-a", VersionComparisonItem: version.VersionComparisonItem{Current: "1.0.0", Latest: "2.0.0", VersionType: version.Major}},
+		{Name: "pkg-c", VersionComparisonItem: version.VersionComparisonItem{Current: "1.0.0", Latest: "1.0.1", VersionType: version.Patch}},
+	}
+
+	oldStdout := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+	printReport(packages)
+	w.Close()
+	os.Stdout = oldStdout
+
+	out, _ := io.ReadAll(r)
+	s := string(out)
+
+	if !strings.Contains(s, "Major updates: 2") || !strings.Contains(s, "Patch updates: 1") {
+		t.Errorf("missing section titles:\n%s", s)
+	}
+	if strings.Contains(s, "Minor updates") {
+		t.Errorf("empty section should be omitted:\n%s", s)
+	}
+	if strings.Index(s, "Major updates") > strings.Index(s, "Patch updates") {
+		t.Errorf("Major should render before Patch:\n%s", s)
+	}
+}
 
 func TestGetVersionUpdateType(t *testing.T) {
 	testCases := []struct {

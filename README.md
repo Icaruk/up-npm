@@ -15,6 +15,7 @@ CLI tool written in Go to review and update your NPM dependencies, easy and fast
 - 🛡️ **Back up** your `package.json` file before updating, ensuring you always have a fallback option if something goes wrong.
 - 🔑 Supports .npmrc `_authToken` ([read more here](#npmrc-support))
 - 🐞 Warns about versions released too recently.
+- 📊 Generates a **summary report** of the updates applied, grouped by major/minor/patch.
 
 
 # Installation
@@ -65,6 +66,27 @@ up-npm -f lint
 # Update some specific .json
 up-npm --file my-project/package.json
 
+```
+
+At the end, you can generate a report of the updates applied:
+
+```
+╭────────────────────────────╮
+│ Major updates: 2           │
+├─────────┬─────────┬────────┤
+│ PACKAGE │ CURRENT │ LATEST │
+├─────────┼─────────┼────────┤
+│ eslint  │  8.57.0 │ 9.15.0 │
+│ vite    │  5.4.10 │  6.0.2 │
+╰─────────┴─────────┴────────╯
+
+╭────────────────────────────╮
+│ Patch updates: 1           │
+├─────────┬─────────┬────────┤
+│ PACKAGE │ CURRENT │ LATEST │
+├─────────┼─────────┼────────┤
+│ axios   │   1.7.7 │  1.7.8 │
+╰─────────┴─────────┴────────╯
 ```
 
 

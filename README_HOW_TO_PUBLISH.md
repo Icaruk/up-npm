@@ -8,7 +8,18 @@
 - Run `npm version patch/minor/major`.
 - Run `task build`.
   - This will place the binaries with checksums in the `dist` folder.
- Run `npm publish`.
+- Run `npm publish`.
 - Create a new release at https://github.com/Icaruk/up-npm/releases
+  - Write non-technical changelog following this template:
+
+    ```markdown
+      yyyy-mm-dd
+      
+      ## New/Fixes
+    
+      - Added new button...
+      - Using X caused a crash...
+    ```
+
   - Upload the `dist` files as release assets.
   - These will be downloaded automatically by users during installation.
